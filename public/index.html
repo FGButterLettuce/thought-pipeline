@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Thought Pipeline</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #0a0a0a; color: #e0e0e0;
+      min-height: 100vh; overflow-x: hidden;
+    }
+    
+    header {
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid #1a1a1a;
+      position: sticky; top: 0; background: #0a0a0a; z-index: 100;
+    }
+    header h1 {
+      font-size: 20px; font-weight: 600;
+      background: linear-gradient(135deg, #4ade80, #22d3ee);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    
+    .tabs {
+      display: flex; gap: 0; padding: 0 20px; margin-top: 12px;
+    }
+    .tab {
+      flex: 1; padding: 10px; text-align: center;
+      background: transparent; border: none; color: #666;
+      font-size: 14px; font-weight: 500; cursor: pointer;
+      border-bottom: 2px solid transparent; transition: all 0.2s;
+    }
+    .tab.active { color: #4ade80; border-bottom-color: #4ade80; }
+    
+    .section { display: none; padding: 16px 20px 100px; }
+    .section.active { display: block; }
+    
+    /* Topic Cards */
+    .topic-card {
+      background: #111; border: 1px solid #1e1e1e;
+      border-radius: 12px; padding: 16px; margin-bottom: 12px;
+      transition: border-color 0.2s;
+    }
+    .topic-card:active { border-color: #4ade80; }
+    .topic-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; color: #fff; }
+    .topic-card .summary { font-size: 13px; color: #999; line-height: 1.5; margin-bottom: 12px; }
+    .topic-card .details { font-size: 13px; color: #4ade80; line-height: 1.5; margin-bottom: 12px; opacity: 0.8; }
+    .topic-card .link { font-size: 12px; margin-bottom: 12px; }
+    .topic-card .link a { color: #22d3ee; text-decoration: none; }
+    
+    .card-actions {
+      display: flex; gap: 10px;
+    }
+    .btn {
+      flex: 1; padding: 12px; border: none; border-radius: 8px;
+      font-size: 14px; font-weight: 500; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-listen { background: #1a2e1a; color: #4ade80; }
+    .btn-listen:active { background: #2a4e2a; }
+    .btn-listen.playing { background: #4ade80; color: #0a0a0a; }
+    .btn-record { background: #2e1a1a; color: #f87171; }
+    .btn-record:active { background: #4e2a2a; }
+    .btn-record.recording { background: #f87171; color: #0a0a0a; animation: pulse 1s infinite; }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    
+    /* Draft Cards */
+    .draft-card {
+      background: #111; border: 1px solid #1e1e1e;
+      border-radius: 12px; padding: 16px; margin-bottom: 12px;
+    }
+    .draft-card h4 { font-size: 14px; color: #4ade80; margin-bottom: 4px; }
+    .draft-card .date { font-size: 11px; color: #555; margin-bottom: 10px; }
+    .draft-card textarea {
+      width: 100%; min-height: 200px; background: #0a0a0a;
+      border: 1px solid #222; border-radius: 8px; color: #e0e0e0;
+      padding: 12px; font-size: 14px; line-height: 1.6; resize: vertical;
+      font-family: inherit;
+    }
+    .draft-card textarea:focus { outline: none; border-color: #4ade80; }
+    .draft-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .btn-sm {
+      padding: 8px 16px; border: none; border-radius: 6px;
+      font-size: 13px; cursor: pointer;
+    }
+    .btn-copy { background: #1a2e1a; color: #4ade80; }
+    .btn-save { background: #1a1a2e; color: #818cf8; }
+    .btn-delete { background: #2e1a1a; color: #f87171; }
+    
+    /* Loading overlay */
+    .generating {
+      position: fixed; inset: 0; background: rgba(10,10,10,0.95);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 200;
+    }
+    .generating .spinner {
+      width: 40px; height: 40px; border: 3px solid #222;
+      border-top-color: #4ade80; border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .generating p { margin-top: 16px; color: #4ade80; font-size: 14px; }
+    
+    .empty { text-align: center; color: #444; padding: 60px 20px; font-size: 14px; }
+    
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #4ade80; color: #0a0a0a; padding: 10px 20px;
+      border-radius: 8px; font-size: 13px; font-weight: 500;
+      opacity: 0; transition: opacity 0.3s; z-index: 300;
+    }
+    .toast.show { opacity: 1; }
+
+    /* User topic badge & accent */
+    .topic-card.user-topic { border-color: #1e3a5f; }
+    .topic-card.user-topic:active { border-color: #3b82f6; }
+    .topic-card.user-topic .details { color: #60a5fa; }
+    .user-badge {
+      display: inline-block; background: #1e3a5f; color: #60a5fa;
+      font-size: 10px; font-weight: 600; padding: 2px 8px;
+      border-radius: 4px; margin-bottom: 8px; text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Floating add button */
+    .fab {
+      position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px;
+      border-radius: 50%; border: none; background: linear-gradient(135deg, #3b82f6, #22d3ee);
+      color: #fff; font-size: 28px; cursor: pointer; z-index: 150;
+      box-shadow: 0 4px 20px rgba(59,130,246,0.4);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.2s;
+    }
+    .fab:active { transform: scale(0.9); }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(10,10,10,0.95);
+      z-index: 200; display: none; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #111; border: 1px solid #1e1e1e; border-radius: 16px;
+      padding: 24px; width: 100%; max-width: 400px;
+    }
+    .modal h2 {
+      font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 16px;
+    }
+    .modal input[type="text"] {
+      width: 100%; padding: 12px; background: #0a0a0a; border: 1px solid #222;
+      border-radius: 8px; color: #e0e0e0; font-size: 14px; font-family: inherit;
+      margin-bottom: 12px;
+    }
+    .modal input[type="text"]:focus { outline: none; border-color: #3b82f6; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .btn-suggest {
+      flex: 1; padding: 12px; border: none; border-radius: 8px;
+      background: #1e3a5f; color: #60a5fa; font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-suggest:active { background: #2a4a6f; }
+    .btn-suggest:disabled { opacity: 0.5; cursor: default; }
+    .btn-voice-rec {
+      padding: 12px 16px; border: none; border-radius: 8px;
+      background: #2e1a1a; color: #f87171; font-size: 14px; cursor: pointer;
+    }
+    .btn-voice-rec.recording { background: #f87171; color: #0a0a0a; animation: pulse 1s infinite; }
+    .btn-cancel {
+      flex: 1; padding: 12px; border: none; border-radius: 8px;
+      background: #1a1a1a; color: #666; font-size: 14px; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚡ Thought Pipeline</h1>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('topics')">Topics</button>
+      <button class="tab" onclick="switchTab('drafts')">Drafts <span id="draft-count"></span></button>
+    </div>
+  </header>
+  
+  <div id="topics-section" class="section active"></div>
+  <div id="drafts-section" class="section"></div>
+  <div id="toast" class="toast"></div>
+
+  <button class="fab" onclick="openAddModal()">+</button>
+
+  <div class="modal-overlay" id="add-modal">
+    <div class="modal">
+      <h2>💡 Add a Topic</h2>
+      <input type="text" id="topic-input" placeholder="Type a topic idea..." />
+      <div style="text-align:center;color:#555;font-size:12px;margin-bottom:12px">or record a voice note</div>
+      <div class="modal-actions">
+        <button class="btn-voice-rec" id="voice-rec-btn" onclick="voiceRecord()">🎙 Voice</button>
+        <button class="btn-suggest" id="suggest-btn" onclick="submitTopic()">🔍 Research</button>
+        <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentAudio = null;
+    let mediaRecorder = null;
+    let recordingTopicId = null;
+    let audioChunks = [];
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelector(`.tab:nth-child(${tab === 'topics' ? 1 : 2})`).classList.add('active');
+      document.getElementById(`${tab}-section`).classList.add('active');
+      if (tab === 'drafts') loadDrafts();
+    }
+
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    async function loadTopics() {
+      const topics = await (await fetch('/api/topics')).json();
+      const el = document.getElementById('topics-section');
+      if (!topics.length) { el.innerHTML = '<div class="empty">No topics found</div>'; return; }
+      el.innerHTML = topics.map(t => `
+        <div class="topic-card" id="topic-${t.id}">
+          <h3>${t.title}</h3>
+          <div class="summary">${t.summary}</div>
+          ${t.details ? `<div class="details">💡 ${t.details}</div>` : ''}
+          ${t.link ? `<div class="link"><a href="${t.link}" target="_blank">🔗 Source</a></div>` : ''}
+          <div class="card-actions">
+            <button class="btn btn-listen" onclick="listen('${t.id}', this)">🎧 Listen</button>
+            <button class="btn btn-record" onclick="record('${t.id}', this)">🎙 Record</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function listen(topicId, btn) {
+      if (currentAudio) { currentAudio.pause(); document.querySelectorAll('.btn-listen').forEach(b => b.classList.remove('playing')); }
+      
+      btn.textContent = '⏳ Loading...';
+      try {
+        const res = await (await fetch(`/api/tts/${topicId}`, { method: 'POST' })).json();
+        if (res.error) { toast(res.error); btn.textContent = '🎧 Listen'; return; }
+        
+        currentAudio = new Audio(res.url);
+        btn.classList.add('playing');
+        btn.textContent = '⏸ Playing';
+        currentAudio.play();
+        currentAudio.onended = () => { btn.classList.remove('playing'); btn.textContent = '🎧 Listen'; };
+      } catch(e) { toast('TTS failed'); btn.textContent = '🎧 Listen'; }
+    }
+
+    async function record(topicId, btn) {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        return;
+      }
+      
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        recordingTopicId = topicId;
+        
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop());
+          btn.classList.remove('recording');
+          btn.textContent = '🎙 Record';
+          
+          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          await uploadRecording(topicId, blob);
+        };
+        
+        mediaRecorder.start();
+        btn.classList.add('recording');
+        btn.textContent = '⏹ Stop';
+      } catch(e) { toast('Mic access denied'); }
+    }
+
+    async function uploadRecording(topicId, blob) {
+      // Show generating overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'generating';
+      overlay.innerHTML = '<div class="spinner"></div><p>Transcribing & drafting...</p>';
+      document.body.appendChild(overlay);
+      
+      try {
+        const fd = new FormData();
+        fd.append('audio', blob, 'recording.webm');
+        const res = await (await fetch(`/api/record/${topicId}`, { method: 'POST', body: fd })).json();
+        overlay.remove();
+        
+        if (res.error) { toast(res.error); return; }
+        toast('Draft created!');
+        switchTab('drafts');
+      } catch(e) { overlay.remove(); toast('Failed to generate draft'); }
+    }
+
+    async function loadDrafts() {
+      const drafts = await (await fetch('/api/drafts')).json();
+      const el = document.getElementById('drafts-section');
+      const countEl = document.getElementById('draft-count');
+      countEl.textContent = drafts.length ? `(${drafts.length})` : '';
+      
+      if (!drafts.length) { el.innerHTML = '<div class="empty">No drafts yet.<br>Record your thoughts on a topic to create one.</div>'; return; }
+      el.innerHTML = drafts.map(d => `
+        <div class="draft-card" id="draft-${d.id}">
+          <h4>${d.topicTitle}</h4>
+          <div class="date">${new Date(d.createdAt).toLocaleString()}</div>
+          <textarea id="text-${d.id}">${d.draft}</textarea>
+          <div class="draft-actions">
+            <button class="btn-sm btn-copy" onclick="copyDraft('${d.id}')">📋 Copy</button>
+            <button class="btn-sm btn-save" onclick="saveDraft('${d.id}')">💾 Save</button>
+            <button class="btn-sm btn-delete" onclick="deleteDraft('${d.id}')">🗑 Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function copyDraft(id) {
+      const text = document.getElementById(`text-${id}`).value;
+      await navigator.clipboard.writeText(text);
+      toast('Copied to clipboard!');
+    }
+
+    async function saveDraft(id) {
+      const draft = document.getElementById(`text-${id}`).value;
+      await fetch(`/api/drafts/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ draft }) });
+      toast('Saved!');
+    }
+
+    async function deleteDraft(id) {
+      await fetch(`/api/drafts/${id}`, { method: 'DELETE' });
+      document.getElementById(`draft-${id}`).remove();
+      toast('Deleted');
+      loadDrafts();
+    }
+
+    // --- Add Topic Feature ---
+    let voiceMediaRecorder = null;
+    let voiceChunks = [];
+
+    function openAddModal() {
+      document.getElementById('add-modal').classList.add('open');
+      document.getElementById('topic-input').value = '';
+      document.getElementById('topic-input').focus();
+    }
+
+    function closeAddModal() {
+      document.getElementById('add-modal').classList.remove('open');
+      if (voiceMediaRecorder && voiceMediaRecorder.state === 'recording') {
+        voiceMediaRecorder.stop();
+      }
+    }
+
+    function voiceRecord() {
+      const btn = document.getElementById('voice-rec-btn');
+      if (voiceMediaRecorder && voiceMediaRecorder.state === 'recording') {
+        voiceMediaRecorder.stop();
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        voiceMediaRecorder = new MediaRecorder(stream);
+        voiceChunks = [];
+        voiceMediaRecorder.ondataavailable = e => voiceChunks.push(e.data);
+        voiceMediaRecorder.onstop = () => {
+          stream.getTracks().forEach(t => t.stop());
+          btn.classList.remove('recording');
+          btn.textContent = '🎙 Voice';
+          const blob = new Blob(voiceChunks, { type: 'audio/webm' });
+          submitVoiceTopic(blob);
+        };
+        voiceMediaRecorder.start();
+        btn.classList.add('recording');
+        btn.textContent = '⏹ Stop';
+      }).catch(() => toast('Mic access denied'));
+    }
+
+    async function submitVoiceTopic(blob) {
+      closeAddModal();
+      const overlay = document.createElement('div');
+      overlay.className = 'generating';
+      overlay.innerHTML = '<div class="spinner"></div><p>Researching your topic...</p>';
+      document.body.appendChild(overlay);
+      try {
+        const fd = new FormData();
+        fd.append('audio', blob, 'topic.webm');
+        const res = await (await fetch('/api/topics/suggest', { method: 'POST', body: fd })).json();
+        overlay.remove();
+        if (res.error) { toast(res.error); return; }
+        toast('Topic added!');
+        loadTopics();
+      } catch(e) { overlay.remove(); toast('Failed to research topic'); }
+    }
+
+    async function submitTopic() {
+      const text = document.getElementById('topic-input').value.trim();
+      if (!text) { toast('Enter a topic idea'); return; }
+      const btn = document.getElementById('suggest-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Researching...';
+      closeAddModal();
+      const overlay = document.createElement('div');
+      overlay.className = 'generating';
+      overlay.innerHTML = '<div class="spinner"></div><p>Researching your topic...</p>';
+      document.body.appendChild(overlay);
+      try {
+        const res = await (await fetch('/api/topics/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        })).json();
+        overlay.remove();
+        btn.disabled = false;
+        btn.textContent = '🔍 Research';
+        if (res.error) { toast(res.error); return; }
+        toast('Topic added!');
+        loadTopics();
+      } catch(e) {
+        overlay.remove();
+        btn.disabled = false;
+        btn.textContent = '🔍 Research';
+        toast('Failed to research topic');
+      }
+    }
+
+    // Update loadTopics to show user topic badge
+    const _origLoadTopics = loadTopics;
+    loadTopics = async function() {
+      const topics = await (await fetch('/api/topics')).json();
+      const el = document.getElementById('topics-section');
+      if (!topics.length) { el.innerHTML = '<div class="empty">No topics found</div>'; return; }
+      el.innerHTML = topics.map(t => `
+        <div class="topic-card ${t.topicSource === 'user' ? 'user-topic' : ''}" id="topic-${t.id}">
+          ${t.topicSource === 'user' ? '<span class="user-badge">Your topic</span>' : ''}
+          <h3>${t.title}</h3>
+          <div class="summary">${t.summary}</div>
+          ${t.details ? `<div class="details">💡 ${t.details}</div>` : ''}
+          ${t.link ? `<div class="link"><a href="${t.link}" target="_blank">🔗 Source</a></div>` : ''}
+          <div class="card-actions">
+            <button class="btn btn-listen" onclick="listen('${t.id}', this)">🎧 Listen</button>
+            <button class="btn btn-record" onclick="record('${t.id}', this)">🎙 Record</button>
+          </div>
+        </div>
+      `).join('');
+    };
+
+    loadTopics();
+  </script>
+</body>
+</html>

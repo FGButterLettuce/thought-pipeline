@@ -1,0 +1,14 @@
+{
+  "name": "thought-pipeline",
+  "version": "1.0.0",
+  "description": "Mobile-first commute companion for turning topics into LinkedIn drafts",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1",
+    "marked": "^15.0.0"
+  }
+}
