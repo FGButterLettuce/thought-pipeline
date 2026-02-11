@@ -44,6 +44,17 @@
     }
     .topic-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
     .topic-card .summary { font-size: 14px; color: #999; line-height: 1.5; margin-bottom: 12px; }
+    .topic-card .insights { 
+      font-size: 13px; 
+      color: #c084fc; 
+      line-height: 1.5; 
+      margin-bottom: 12px; 
+      padding: 10px 12px;
+      background: #1a1520;
+      border-radius: 8px;
+      border-left: 3px solid #c084fc;
+    }
+    .topic-card .insight-icon { margin-right: 6px; }
     .card-actions { display: flex; gap: 10px; }
     .btn {
       flex: 1; padding: 12px; border: none; border-radius: 8px;
@@ -606,6 +617,7 @@
         <div class="topic-card" id="topic-${t.id}">
           <h3>${t.title}</h3>
           <div class="summary">${t.summary}</div>
+          ${t.details ? `<div class="insights"><span class="insight-icon">💡</span> ${t.details}</div>` : ''}
           <div class="card-actions">
             <button class="btn btn-listen" onclick="playTopic('${t.id}', this)">🎧 Listen</button>
             <button class="btn btn-record" onclick="startRecording('${t.id}')">🎙 Record</button>
