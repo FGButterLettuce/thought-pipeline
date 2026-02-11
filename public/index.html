@@ -77,31 +77,51 @@
       background: linear-gradient(180deg, #141414 0%, #0d0d0d 100%);
       border: 2px solid #222;
       border-radius: 20px;
-      padding: 24px;
+      padding: 20px;
       max-height: 60vh;
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
       box-shadow: 0 20px 60px rgba(0,0,0,0.5);
     }
-    
+
     .story-card h2 {
-      font-size: 24px; font-weight: 700;
-      margin-bottom: 16px;
+      font-size: 20px; font-weight: 700;
+      margin-bottom: 12px;
       line-height: 1.3;
       color: #fff;
+      flex-shrink: 0;
     }
-    
+
+    .story-scrollable {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-right: 8px;
+    }
+
+    .story-scrollable::-webkit-scrollbar {
+      width: 4px;
+    }
+    .story-scrollable::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .story-scrollable::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 2px;
+    }
+
     .story-card .summary {
-      font-size: 18px;
+      font-size: 16px;
       line-height: 1.6;
       color: #ccc;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
-    
+
     .story-card .details {
-      font-size: 16px;
+      font-size: 14px;
       line-height: 1.5;
       color: #888;
-      padding-top: 16px;
+      padding-top: 12px;
       border-top: 1px solid #222;
     }
     
@@ -502,8 +522,10 @@
       document.getElementById('story-content').innerHTML = `
         <div class="story-card">
           <h2>${topic.title}</h2>
-          <div class="summary">${topic.summary}</div>
-          ${topic.details ? `<div class="details">${topic.details}</div>` : ''}
+          <div class="story-scrollable" id="story-scroll">
+            <div class="summary">${topic.summary}</div>
+            ${topic.details ? `<div class="details">${topic.details}</div>` : ''}
+          </div>
         </div>
       `;
       updatePlayButton();
@@ -657,20 +679,21 @@
     
     document.getElementById('story-viewer').addEventListener('touchend', e => {
       if (!driveMode) return;
-      
+
       const diffY = touchStartY - e.changedTouches[0].clientY;
       const diffX = Math.abs(touchStartX - e.changedTouches[0].clientX);
       const duration = Date.now() - touchStartTime;
-      
-      // Only trigger if:
+
+      // Check if inner content is scrolled
+      const scrollEl = document.getElementById('story-scroll');
+      const isScrolled = scrollEl && (scrollEl.scrollTop > 5 || (scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight > 5));
+
+      // Only trigger swipe if:
       // - Vertical swipe is significant (100px+)
-      // - Horizontal movement is minimal (not a diagonal swipe)
-      // - Swipe was quick (less than 300ms)
-      // - Not currently scrolling inside the card
-      const storyCard = document.querySelector('.story-card');
-      const isScrollingContent = storyCard && storyCard.scrollTop > 10;
-      
-      if (Math.abs(diffY) > 100 && diffX < 50 && duration < 300 && !isScrollingContent) {
+      // - Horizontal movement is minimal
+      // - Swipe was quick (< 300ms)
+      // - Inner content is NOT scrolled
+      if (Math.abs(diffY) > 100 && diffX < 50 && duration < 300 && !isScrolled) {
         if (diffY > 0) nextStory(); // Swipe up = next
       }
     });
