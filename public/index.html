@@ -598,7 +598,16 @@
       if (topics[currentIndex]) {
         await setPreference(topics[currentIndex].id, 'skipped');
       }
-      nextStory();
+      // Remove current story from array and continue
+      topics.splice(currentIndex, 1);
+      if (currentIndex >= topics.length) currentIndex = 0;
+      if (topics.length === 0) {
+        document.getElementById('story-content').innerHTML = '<div class="empty">No more stories!<br>Check back tomorrow.</div>';
+        stopAudio();
+        return;
+      }
+      renderDrivingMode();
+      autoPlay();
     }
 
     async function likeStory() {
@@ -606,7 +615,11 @@
         await setPreference(topics[currentIndex].id, 'interested');
         toast('❤ Saved for later');
       }
-      nextStory();
+      // Move to next without removing
+      currentIndex++;
+      if (currentIndex >= topics.length) currentIndex = 0;
+      renderDrivingMode();
+      autoPlay();
     }
 
     function stopAudio() {
@@ -630,6 +643,10 @@
       stopAudio();
       currentIndex++;
       if (currentIndex >= topics.length) currentIndex = 0;
+      if (topics.length === 0) {
+        document.getElementById('story-content').innerHTML = '<div class="empty">No more stories!<br>Check back tomorrow.</div>';
+        return;
+      }
       renderDrivingMode();
       autoPlay();
     }
