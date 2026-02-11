@@ -192,10 +192,16 @@ Return ONLY valid JSON, no markdown fences.`
     saveUserTopics(userTopics);
 
     // Generate TTS
-    const text = `${newTopic.title}. ${newTopic.summary} ${newTopic.details}`.replace(/"/g, '\\"');
+    const text = `${newTopic.title}. ${newTopic.summary} ${newTopic.details}`;
     const audioFile = `${topicId}.mp3`;
     const audioPath = path.join(AUDIO_DIR, audioFile);
-    exec(`edge-tts --text "${text}" --write-media "${audioPath}" --voice en-US-GuyNeural`, (err) => {
+    
+    // Write text to temp file to avoid shell escaping issues
+    const tmpFile = path.join('/tmp', `tts-${topicId}.txt`);
+    fs.writeFileSync(tmpFile, text);
+    
+    exec(`edge-tts -f "${tmpFile}" --write-media "${audioPath}" --voice en-US-GuyNeural`, (err) => {
+      fs.unlinkSync(tmpFile);
       if (err) console.error('TTS error for user topic:', err.message);
     });
 
@@ -219,9 +225,14 @@ app.post('/api/tts/:topicId', (req, res) => {
     return res.json({ url: `/audio/${audioFile}` });
   }
   
-  const text = `${topic.title}. ${topic.summary} ${topic.details}`.replace(/"/g, '\\"');
+  const text = `${topic.title}. ${topic.summary} ${topic.details}`;
   
-  exec(`edge-tts --text "${text}" --write-media "${audioPath}" --voice en-US-GuyNeural`, (err) => {
+  // Write text to temp file to avoid shell escaping issues
+  const tmpFile = path.join('/tmp', `tts-${topic.id}.txt`);
+  fs.writeFileSync(tmpFile, text);
+  
+  exec(`edge-tts -f "${tmpFile}" --write-media "${audioPath}" --voice en-US-GuyNeural`, (err) => {
+    fs.unlinkSync(tmpFile); // Clean up temp file
     if (err) {
       console.error('TTS error:', err.message);
       return res.status(500).json({ error: 'TTS generation failed' });
