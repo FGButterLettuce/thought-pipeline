@@ -20,7 +20,15 @@ const PREFERENCES_FILE = path.join(BASE, 'data', 'preferences.json');
 [AUDIO_DIR, RECORDINGS_DIR, path.join(BASE, 'data')].forEach(d => fs.mkdirSync(d, { recursive: true }));
 
 app.use(express.json());
-app.use(express.static(path.join(BASE, 'public')));
+app.use(express.static(path.join(BASE, 'public'), {
+  etag: false,
+  lastModified: false,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+}));
 app.use('/audio', express.static(AUDIO_DIR));
 app.use('/recordings', express.static(RECORDINGS_DIR));
 
