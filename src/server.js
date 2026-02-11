@@ -393,15 +393,6 @@ app.get('/api/preferences', (req, res) => {
   res.json(getPreferences());
 });
 
-// HTTPS redirect middleware (for Cloudflare)
-app.use((req, res, next) => {
-  // Check if request came via HTTP (Cloudflare sets x-forwarded-proto)
-  if (req.headers['x-forwarded-proto'] === 'http') {
-    return res.redirect(301, `https://${req.headers.host}${req.url}`);
-  }
-  next();
-});
-
 // Start HTTP server (Cloudflare Tunnel handles HTTPS)
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Thought Pipeline running at http://0.0.0.0:${PORT}`);
