@@ -242,6 +242,25 @@
       font-size: 20px;
       color: #f87171;
     }
+
+    /* Loading overlay for TTS generation */
+    .tts-loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10,10,10,0.9);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 150;
+    }
+    .tts-loading-overlay.active { display: flex; }
+
+    .tts-loading-text {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #4ade80;
+    }
     
     .stop-rec-btn {
       margin-top: 40px;
@@ -383,6 +402,12 @@
     </div>
   </div>
   
+  <!-- TTS Loading Overlay -->
+  <div class="tts-loading-overlay" id="tts-loading-overlay">
+    <div class="spinner"></div>
+    <div class="tts-loading-text">Generating audio...</div>
+  </div>
+
   <!-- Recording Overlay -->
   <div class="recording-overlay" id="recording-overlay">
     <div class="recording-pulse"></div>
@@ -538,15 +563,23 @@
       if (!driveMode || !topics.length) return;
       isPlaying = true;
       updatePlayButton();
-      
+
       const topic = topics[currentIndex];
+      const loadingEl = document.getElementById('tts-loading-overlay');
+
       try {
+        // Show loading
+        loadingEl.classList.add('active');
+
         const res = await (await fetch(`/api/tts/${topic.id}`, { method: 'POST' })).json();
-        if (res.error) { 
+
+        // Hide loading
+        loadingEl.classList.remove('active');
+
+        if (res.error) {
           console.log('TTS error for:', topic.title, res.error);
-          // Wait 1 second before skipping on error
           setTimeout(() => nextStory(), 1000);
-          return; 
+          return;
         }
         
         currentAudio = new Audio(res.url);
@@ -589,8 +622,9 @@
           }
         }, 5000);
         
-      } catch(e) { 
+      } catch(e) {
         console.error('Auto-play error:', e);
+        loadingEl.classList.remove('active');
         isPlaying = false;
         updatePlayButton();
         setTimeout(() => nextStory(), 1000);
