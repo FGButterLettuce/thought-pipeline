@@ -248,10 +248,12 @@
       position: fixed;
       inset: 0;
       background: #0a0a0a;
-      z-index: 400;
+      z-index: 1000;
       padding: 20px;
       overflow-y: auto;
+      display: none;
     }
+    .skipped-view.active { display: block; }
     .skipped-header {
       display: flex;
       justify-content: space-between;
@@ -424,7 +426,7 @@
   </div>
 
   <!-- Skipped Stories View -->
-  <div class="skipped-view" id="skipped-view" style="display:none;">
+  <div class="skipped-view" id="skipped-view">
     <div class="skipped-header">
       <h2>Skipped Stories</h2>
       <button onclick="toggleSkippedView()">✕ Close</button>
@@ -537,12 +539,16 @@
     }
 
     function toggleSkippedView() {
+      console.log('toggleSkippedView called');
       const view = document.getElementById('skipped-view');
-      if (view.style.display === 'none') {
+      console.log('Has active class:', view.classList.contains('active'));
+      if (!view.classList.contains('active')) {
         renderSkippedList();
-        view.style.display = 'block';
+        view.classList.add('active');
+        console.log('Showing skipped view');
       } else {
-        view.style.display = 'none';
+        view.classList.remove('active');
+        console.log('Hiding skipped view');
       }
     }
 
