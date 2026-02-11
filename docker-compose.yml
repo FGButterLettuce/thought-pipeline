@@ -14,6 +14,7 @@ services:
       - ./data:/app/data
       - ./audio:/app/audio
       - ./recordings:/app/recordings
+      - /home/niranjan/.openclaw/workspace/scout:/home/niranjan/.openclaw/workspace/scout:ro
     restart: unless-stopped
     networks:
       - thought-pipeline-net
