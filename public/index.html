@@ -542,29 +542,58 @@
       const topic = topics[currentIndex];
       try {
         const res = await (await fetch(`/api/tts/${topic.id}`, { method: 'POST' })).json();
-        if (res.error) { nextStory(); return; }
+        if (res.error) { 
+          console.log('TTS error for:', topic.title, res.error);
+          // Wait 1 second before skipping on error
+          setTimeout(() => nextStory(), 1000);
+          return; 
+        }
         
         currentAudio = new Audio(res.url);
         
-        // Progress bar
-        const progressBar = document.getElementById('progress-bar');
-        progressBar.style.width = '0%';
-        
-        currentAudio.addEventListener('timeupdate', () => {
-          const pct = (currentAudio.currentTime / currentAudio.duration) * 100;
-          progressBar.style.width = pct + '%';
-        });
-        
-        currentAudio.onended = () => {
-          // Auto-advance after 3 seconds (giving time to read)
-          autoAdvanceTimeout = setTimeout(() => nextStory(), 3000);
+        // Handle audio load errors
+        currentAudio.onerror = () => {
+          console.log('Audio load error for:', topic.title);
+          setTimeout(() => nextStory(), 1000);
         };
         
-        currentAudio.play();
+        // Wait for audio to be ready
+        currentAudio.addEventListener('canplay', () => {
+          // Progress bar
+          const progressBar = document.getElementById('progress-bar');
+          progressBar.style.width = '0%';
+          
+          currentAudio.addEventListener('timeupdate', () => {
+            if (currentAudio.duration) {
+              const pct = (currentAudio.currentTime / currentAudio.duration) * 100;
+              progressBar.style.width = pct + '%';
+            }
+          });
+          
+          currentAudio.onended = () => {
+            // Auto-advance after 3 seconds (giving time to read)
+            autoAdvanceTimeout = setTimeout(() => nextStory(), 3000);
+          };
+          
+          currentAudio.play().catch(e => {
+            console.log('Play error:', e);
+            setTimeout(() => nextStory(), 1000);
+          });
+        }, { once: true });
+        
+        // Timeout if audio doesn't load in 5 seconds
+        setTimeout(() => {
+          if (currentAudio && currentAudio.readyState < 2) {
+            console.log('Audio load timeout for:', topic.title);
+            nextStory();
+          }
+        }, 5000);
+        
       } catch(e) { 
         console.error('Auto-play error:', e);
         isPlaying = false;
         updatePlayButton();
+        setTimeout(() => nextStory(), 1000);
       }
     }
     
