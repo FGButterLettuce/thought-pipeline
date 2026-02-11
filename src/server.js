@@ -321,27 +321,7 @@ app.delete('/api/drafts/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// HTTPS for mobile mic access + HTTP fallback
-const https = require('https');
-const http = require('http');
-const certPath = path.join(__dirname, '..', 'certs');
-if (fs.existsSync(path.join(certPath, 'key.pem'))) {
-  const sslOptions = {
-    key: fs.readFileSync(path.join(certPath, 'key.pem')),
-    cert: fs.readFileSync(path.join(certPath, 'cert.pem'))
-  };
-  https.createServer(sslOptions, app).listen(PORT, '0.0.0.0', () => {
-    console.log(`Thought Pipeline (HTTPS) running at https://0.0.0.0:${PORT}`);
-  });
-  // HTTP redirect on 3458
-  http.createServer((req, res) => {
-    res.writeHead(301, { Location: `https://${req.headers.host.replace(':3458', ':3457')}${req.url}` });
-    res.end();
-  }).listen(3458, '0.0.0.0', () => {
-    console.log(`HTTP redirect on port 3458`);
-  });
-} else {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Thought Pipeline running at http://0.0.0.0:${PORT}`);
-  });
-}
+// Start HTTP server (Cloudflare Tunnel handles HTTPS)
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Thought Pipeline running at http://0.0.0.0:${PORT}`);
+});
