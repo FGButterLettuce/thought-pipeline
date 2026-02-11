@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  thought-pipeline:
+    build: .
+    container_name: thought-pipeline
+    ports:
+      - "127.0.0.1:3000:3000"  # Only accessible locally, not exposed to internet
+    environment:
+      - NODE_ENV=production
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PORT=3000
+    volumes:
+      - ./data:/app/data
+      - ./audio:/app/audio
+      - ./recordings:/app/recordings
+    restart: unless-stopped
+    networks:
+      - thought-pipeline-net
+
+networks:
+  thought-pipeline-net:
+    driver: bridge

@@ -1,24 +1,34 @@
 FROM node:20-slim
 
-# Install Playwright dependencies
+# Install Python and pip for edge-tts
 RUN apt-get update && apt-get install -y \
-    libnss3 \
-    libatk-bridge2.0-0 \
-    libdrm2 \
-    libxkbcommon0 \
-    libgbm1 \
-    libasound2 \
+    python3 \
+    python3-pip \
+    python3-venv \
     && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment for edge-tts
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install edge-tts
+RUN pip install edge-tts
 
 WORKDIR /app
 
+# Copy package files
 COPY package*.json ./
 RUN npm ci --only=production
 
-# Install Playwright browsers
-RUN npx playwright install chromium
-
+# Copy app code
 COPY . .
+
+# Create directories with proper permissions
+RUN mkdir -p audio recordings data && chmod 755 audio recordings data
+
+# Create non-root user with different UID
+RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
+USER appuser
 
 EXPOSE 3000
 

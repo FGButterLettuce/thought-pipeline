@@ -7,7 +7,7 @@ const { execSync, exec } = require('child_process');
 const crypto = require('crypto');
 
 const app = express();
-const PORT = 3457;
+const PORT = process.env.PORT || 3000;
 const BASE = path.resolve(__dirname, '..');
 const SCOUT_DIR = '/home/niranjan/.openclaw/workspace/scout';
 const AUDIO_DIR = path.join(BASE, 'audio');
