@@ -322,6 +322,86 @@
       font-size: 12px;
       cursor: pointer;
     }
+    .skipped-item button:hover {
+      background: #4ade80;
+      color: #0a0a0a;
+    }
+
+    /* Drafts View */
+    .drafts-view {
+      position: fixed;
+      inset: 0;
+      background: #0a0a0a;
+      z-index: 1000;
+      padding: 20px;
+      overflow-y: auto;
+      display: none;
+    }
+    .drafts-view.active { display: block; }
+    .drafts-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #222;
+    }
+    .drafts-header h2 {
+      font-size: 20px;
+      color: #4ade80;
+    }
+    .drafts-header button {
+      padding: 8px 16px;
+      background: #222;
+      color: #888;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .draft-item {
+      background: #111;
+      border: 1px solid #1e1e1e;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .draft-item h3 {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .draft-item .draft-date {
+      font-size: 11px;
+      color: #444;
+      margin-bottom: 12px;
+    }
+    .draft-item .draft-content {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #ccc;
+      white-space: pre-wrap;
+      background: #1a1a1a;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    .draft-item .draft-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .draft-item button {
+      padding: 6px 12px;
+      background: #1e3a2f;
+      color: #4ade80;
+      border: 1px solid #4ade80;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .draft-item button:hover {
+      background: #4ade80;
+      color: #0a0a0a;
+    }
 
     /* Loading overlay for TTS generation */
     .tts-loading-overlay {
@@ -452,7 +532,7 @@
   
   <!-- Stats Bar -->
   <div class="stats-bar" id="stats-bar">
-    <span>✓ 0 recorded</span>
+    <span id="recorded-stat" onclick="toggleDraftsView()" style="cursor:pointer;color:#4ade80;">✓ 0 recorded</span>
     <span>❤ 0 interested</span>
     <span id="skipped-stat" onclick="toggleSkippedView()" style="cursor:pointer;">✕ 0 skipped</span>
   </div>
@@ -464,6 +544,15 @@
       <button onclick="toggleSkippedView()">✕ Close</button>
     </div>
     <div id="skipped-list"></div>
+  </div>
+
+  <!-- Drafts View -->
+  <div class="drafts-view" id="drafts-view">
+    <div class="drafts-header">
+      <h2>📝 My Drafts</h2>
+      <button onclick="toggleDraftsView()">✕ Close</button>
+    </div>
+    <div id="drafts-list"></div>
   </div>
 
   <!-- Normal Mode -->
@@ -625,7 +714,65 @@
       renderSkippedList();
       toast('↩ Story restored');
     }
-    
+
+    // ========== DRAFTS VIEW ==========
+    function toggleDraftsView() {
+      const view = document.getElementById('drafts-view');
+      if (!view.classList.contains('active')) {
+        loadDrafts();
+        view.classList.add('active');
+      } else {
+        view.classList.remove('active');
+      }
+    }
+
+    async function loadDrafts() {
+      try {
+        const res = await fetch('/api/drafts');
+        const drafts = await res.json();
+        const listEl = document.getElementById('drafts-list');
+
+        if (!drafts.length) {
+          listEl.innerHTML = '<div class="empty">No drafts yet. Record a voice note on any story to create one!</div>';
+          return;
+        }
+
+        listEl.innerHTML = drafts.map(d => `
+          <div class="draft-item">
+            <h3>${d.topicTitle}</h3>
+            <div class="draft-date">${new Date(d.createdAt).toLocaleString()}</div>
+            <div class="draft-content">${escapeHtml(d.draft)}</div>
+            <div class="draft-actions">
+              <button onclick="copyDraft('${d.id}')">📋 Copy</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Failed to load drafts:', err);
+        document.getElementById('drafts-list').innerHTML = '<div class="empty">Failed to load drafts</div>';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function copyDraft(draftId) {
+      try {
+        const res = await fetch('/api/drafts');
+        const drafts = await res.json();
+        const draft = drafts.find(d => d.id === draftId);
+        if (draft) {
+          await navigator.clipboard.writeText(draft.draft);
+          toast('📋 Draft copied to clipboard!');
+        }
+      } catch (err) {
+        toast('Failed to copy draft');
+      }
+    }
+
     async function setPreference(topicId, status) {
       await fetch(`/api/topics/${topicId}/preference`, {
         method: 'POST',

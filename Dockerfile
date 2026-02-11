@@ -1,10 +1,11 @@
 FROM node:20-slim
 
-# Install Python and pip for edge-tts
+# Install Python, curl, and other deps
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     python3-venv \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create virtual environment for edge-tts

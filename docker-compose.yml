@@ -16,6 +16,9 @@ services:
       - ./recordings:/app/recordings
       - /home/niranjan/.openclaw/workspace/scout:/home/niranjan/.openclaw/workspace/scout:ro
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks:
       - thought-pipeline-net
 
