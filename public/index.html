@@ -240,6 +240,17 @@
       padding: 40px;
     }
     
+    .stats-bar {
+      padding: 10px 20px;
+      background: #111;
+      border-bottom: 1px solid #1a1a1a;
+      font-size: 12px;
+      color: #666;
+      display: flex;
+      gap: 20px;
+    }
+    .stats-bar span { color: #4ade80; }
+    
     .generating {
       position: fixed;
       inset: 0;
@@ -295,9 +306,16 @@
     <button class="mode-toggle" id="mode-btn" onclick="toggleMode()">🚗 Drive</button>
   </header>
   
+  <!-- Stats Bar -->
+  <div class="stats-bar" id="stats-bar">
+    <span>✓ 0 recorded</span>
+    <span>❤ 0 interested</span>
+    <span>✕ 0 skipped</span>
+  </div>
+
   <!-- Normal Mode -->
   <div class="normal-mode" id="normal-mode"></div>
-  
+
   <!-- Driving Mode -->
   <div class="driving-mode" id="driving-mode">
     <div class="story-viewer" id="story-viewer">
@@ -310,7 +328,7 @@
       </div>
       <div class="swipe-hint">↑ Scroll for more</div>
     </div>
-    
+
     <div class="driving-controls">
       <button class="drive-btn btn-skip" onclick="skipStory()">
         ⏭
@@ -319,6 +337,10 @@
       <button class="drive-btn btn-play" id="drive-play-btn" onclick="togglePlay()">
         ▶
         <span>PLAY</span>
+      </button>
+      <button class="drive-btn" style="background:#2e1a2e;color:#c084fc;border:2px solid #c084fc" onclick="likeStory()">
+        ❤
+        <span>LIKE</span>
       </button>
       <button class="drive-btn btn-accept" onclick="acceptStory()">
         ✓
@@ -351,12 +373,52 @@
     let mediaRecorder = null;
     let audioChunks = [];
     let driveMode = false;
+    let preferences = { skipped: [], interested: [], recorded: [] };
     
-    // Load topics
+    // Load topics and preferences
     async function loadTopics() {
-      topics = await (await fetch('/api/topics')).json();
+      const [allTopics, prefs] = await Promise.all([
+        fetch('/api/topics').then(r => r.json()),
+        fetch('/api/preferences').then(r => r.json())
+      ]);
+      topics = allTopics;
+      preferences = prefs;
       renderNormalMode();
-      if (driveMode) renderDrivingMode();
+      updateStats();
+    }
+    
+    async function loadFeed() {
+      // Load filtered feed for driving mode
+      const [feed, prefs] = await Promise.all([
+        fetch('/api/topics/feed').then(r => r.json()),
+        fetch('/api/preferences').then(r => r.json())
+      ]);
+      topics = feed;
+      preferences = prefs;
+      updateStats();
+      return feed;
+    }
+    
+    function updateStats() {
+      const total = preferences.skipped.length + preferences.interested.length + preferences.recorded.length;
+      const statsEl = document.getElementById('stats-bar');
+      if (statsEl) {
+        statsEl.innerHTML = `
+          <span>✓ ${preferences.recorded.length} recorded</span>
+          <span>❤ ${preferences.interested.length} interested</span>
+          <span>✕ ${preferences.skipped.length} skipped</span>
+        `;
+      }
+    }
+    
+    async function setPreference(topicId, status) {
+      await fetch(`/api/topics/${topicId}/preference`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      preferences[status].push(topicId);
+      updateStats();
     }
     
     // ========== NORMAL MODE ==========
@@ -402,17 +464,23 @@
     }
     
     // ========== DRIVING MODE ==========
-    function toggleMode() {
+    async function toggleMode() {
       driveMode = !driveMode;
       document.getElementById('mode-btn').classList.toggle('active', driveMode);
       document.getElementById('normal-mode').style.display = driveMode ? 'none' : 'block';
       document.getElementById('driving-mode').classList.toggle('active', driveMode);
-      if (driveMode && topics.length) {
+      if (driveMode) {
+        await loadFeed(); // Load filtered feed
         currentIndex = 0;
-        renderDrivingMode();
-        autoPlay();
+        if (topics.length) {
+          renderDrivingMode();
+          autoPlay();
+        } else {
+          document.getElementById('story-content').innerHTML = '<div class="empty">No new stories!<br>All topics reviewed.</div>';
+        }
       } else {
         if (currentAudio) { currentAudio.pause(); currentAudio = null; isPlaying = false; }
+        loadTopics(); // Reload all for normal mode
       }
     }
     
@@ -485,7 +553,18 @@
       }
     }
     
-    function skipStory() {
+    async function skipStory() {
+      if (topics[currentIndex]) {
+        await setPreference(topics[currentIndex].id, 'skipped');
+      }
+      nextStory();
+    }
+    
+    async function likeStory() {
+      if (topics[currentIndex]) {
+        await setPreference(topics[currentIndex].id, 'interested');
+        toast('❤ Saved for later');
+      }
       nextStory();
     }
     
@@ -496,9 +575,11 @@
       autoPlay();
     }
     
-    function acceptStory() {
+    async function acceptStory() {
       if (!topics.length) return;
-      startRecording(topics[currentIndex].id);
+      const topicId = topics[currentIndex].id;
+      await setPreference(topicId, 'recorded');
+      startRecording(topicId);
     }
     
     // ========== RECORDING ==========

@@ -14,6 +14,7 @@ const AUDIO_DIR = path.join(BASE, 'audio');
 const RECORDINGS_DIR = path.join(BASE, 'recordings');
 const DRAFTS_FILE = path.join(BASE, 'data', 'drafts.json');
 const USER_TOPICS_FILE = path.join(BASE, 'data', 'user-topics.json');
+const PREFERENCES_FILE = path.join(BASE, 'data', 'preferences.json');
 
 // Ensure dirs
 [AUDIO_DIR, RECORDINGS_DIR, path.join(BASE, 'data')].forEach(d => fs.mkdirSync(d, { recursive: true }));
@@ -330,6 +331,66 @@ app.delete('/api/drafts/:id', (req, res) => {
   drafts = drafts.filter(d => d.id !== req.params.id);
   saveDrafts(drafts);
   res.json({ ok: true });
+});
+
+// --- Preferences System ---
+function getPreferences() {
+  try { return JSON.parse(fs.readFileSync(PREFERENCES_FILE, 'utf-8')); } 
+  catch { return { skipped: [], interested: [], recorded: [] }; }
+}
+
+function savePreferences(prefs) {
+  fs.writeFileSync(PREFERENCES_FILE, JSON.stringify(prefs, null, 2));
+}
+
+// Mark topic preference
+app.post('/api/topics/:id/preference', (req, res) => {
+  const { status } = req.body; // 'skipped', 'interested', 'recorded', 'reset'
+  const prefs = getPreferences();
+  const topicId = req.params.id;
+  
+  // Remove from all lists first
+  prefs.skipped = prefs.skipped.filter(id => id !== topicId);
+  prefs.interested = prefs.interested.filter(id => id !== topicId);
+  prefs.recorded = prefs.recorded.filter(id => id !== topicId);
+  
+  // Add to appropriate list
+  if (status === 'skipped') prefs.skipped.push(topicId);
+  else if (status === 'interested') prefs.interested.push(topicId);
+  else if (status === 'recorded') prefs.recorded.push(topicId);
+  
+  savePreferences(prefs);
+  res.json({ ok: true, status });
+});
+
+// Get filtered topics (for driving mode)
+app.get('/api/topics/feed', (req, res) => {
+  const prefs = getPreferences();
+  const allTopics = [...getAllTopics(), ...getUserTopics()];
+  
+  // Filter out skipped topics
+  const feed = allTopics.filter(t => !prefs.skipped.includes(t.id));
+  
+  // Sort: interested first, then new, then recorded last
+  feed.sort((a, b) => {
+    const aInterested = prefs.interested.includes(a.id);
+    const bInterested = prefs.interested.includes(b.id);
+    const aRecorded = prefs.recorded.includes(a.id);
+    const bRecorded = prefs.recorded.includes(b.id);
+    
+    if (aInterested && !bInterested) return -1;
+    if (!aInterested && bInterested) return 1;
+    if (aRecorded && !bRecorded) return 1;
+    if (!aRecorded && bRecorded) return -1;
+    return 0;
+  });
+  
+  res.json(feed);
+});
+
+// Get preferences
+app.get('/api/preferences', (req, res) => {
+  res.json(getPreferences());
 });
 
 // Start HTTP server (Cloudflare Tunnel handles HTTPS)
