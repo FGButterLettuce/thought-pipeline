@@ -509,7 +509,8 @@
         fetch('/api/topics').then(r => r.json()),
         fetch('/api/preferences').then(r => r.json())
       ]);
-      topics = allTopics;
+      // Filter out skipped stories in normal mode too
+      topics = allTopics.filter(t => !prefs.skipped.includes(t.id));
       preferences = prefs;
       renderNormalMode();
       updateStats();
