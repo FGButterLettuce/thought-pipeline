@@ -54,6 +54,10 @@
     .btn-listen.playing { background: #4ade80; color: #0a0a0a; }
     .btn-record { background: #2e1a1a; color: #f87171; }
     .btn-record.recording { background: #f87171; color: #0a0a0a; }
+    .btn-like { background: #2e1a2e; color: #c084fc; }
+    .btn-like:hover { background: #c084fc; color: #0a0a0a; }
+    .btn-skip { background: #1a1a1a; color: #666; }
+    .btn-skip:hover { background: #444; color: #fff; }
     
     /* ========== DRIVING MODE ========== */
     .driving-mode {
@@ -605,9 +609,23 @@
           <div class="card-actions">
             <button class="btn btn-listen" onclick="playTopic('${t.id}', this)">🎧 Listen</button>
             <button class="btn btn-record" onclick="startRecording('${t.id}')">🎙 Record</button>
+            <button class="btn btn-like" onclick="likeTopicNormal('${t.id}')">❤ Like</button>
+            <button class="btn btn-skip" onclick="skipTopicNormal('${t.id}')">⏭ Skip</button>
           </div>
         </div>
       `).join('');
+    }
+
+    async function likeTopicNormal(topicId) {
+      await setPreference(topicId, 'interested');
+      document.getElementById(`topic-${topicId}`).remove();
+      toast('❤ Liked — showing more like this');
+    }
+
+    async function skipTopicNormal(topicId) {
+      await setPreference(topicId, 'skipped');
+      document.getElementById(`topic-${topicId}`).remove();
+      toast('⏭ Skipped — hiding similar topics');
     }
     
     async function playTopic(id, btn) {
