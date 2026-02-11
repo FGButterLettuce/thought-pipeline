@@ -3,7 +3,5 @@ credentials-file: /home/niranjan/.cloudflared/ab662fe1-618c-4252-ac27-6eaccbc716
 
 ingress:
   - hostname: thought.niranjanrakesh.me
-    service: https://127.0.0.1:3457
-    originRequest:
-      noTLSVerify: true
+    service: http://127.0.0.1:3457
   - service: http_status:404
