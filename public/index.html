@@ -243,6 +243,63 @@
       color: #f87171;
     }
 
+    /* Skipped Stories View */
+    .skipped-view {
+      position: fixed;
+      inset: 0;
+      background: #0a0a0a;
+      z-index: 400;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .skipped-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #222;
+    }
+    .skipped-header h2 {
+      font-size: 20px;
+      color: #666;
+    }
+    .skipped-header button {
+      padding: 8px 16px;
+      background: #222;
+      color: #888;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .skipped-item {
+      background: #111;
+      border: 1px solid #1e1e1e;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      opacity: 0.6;
+    }
+    .skipped-item h4 {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    .skipped-item .summary {
+      font-size: 13px;
+      color: #555;
+    }
+    .skipped-item button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      background: #1a2e1a;
+      color: #4ade80;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
     /* Loading overlay for TTS generation */
     .tts-loading-overlay {
       position: fixed;
@@ -363,7 +420,16 @@
   <div class="stats-bar" id="stats-bar">
     <span>✓ 0 recorded</span>
     <span>❤ 0 interested</span>
-    <span>✕ 0 skipped</span>
+    <span id="skipped-stat" onclick="toggleSkippedView()" style="cursor:pointer;">✕ 0 skipped</span>
+  </div>
+
+  <!-- Skipped Stories View -->
+  <div class="skipped-view" id="skipped-view" style="display:none;">
+    <div class="skipped-header">
+      <h2>Skipped Stories</h2>
+      <button onclick="toggleSkippedView()">✕ Close</button>
+    </div>
+    <div id="skipped-list"></div>
   </div>
 
   <!-- Normal Mode -->
@@ -460,15 +526,55 @@
     }
     
     function updateStats() {
-      const total = preferences.skipped.length + preferences.interested.length + preferences.recorded.length;
       const statsEl = document.getElementById('stats-bar');
       if (statsEl) {
         statsEl.innerHTML = `
           <span>✓ ${preferences.recorded.length} recorded</span>
           <span>❤ ${preferences.interested.length} interested</span>
-          <span>✕ ${preferences.skipped.length} skipped</span>
+          <span id="skipped-stat" onclick="toggleSkippedView()" style="cursor:pointer;">✕ ${preferences.skipped.length} skipped</span>
         `;
       }
+    }
+
+    function toggleSkippedView() {
+      const view = document.getElementById('skipped-view');
+      if (view.style.display === 'none') {
+        renderSkippedList();
+        view.style.display = 'block';
+      } else {
+        view.style.display = 'none';
+      }
+    }
+
+    async function renderSkippedList() {
+      const allTopics = await (await fetch('/api/topics')).json();
+      const skippedTopics = allTopics.filter(t => preferences.skipped.includes(t.id));
+      const listEl = document.getElementById('skipped-list');
+
+      if (!skippedTopics.length) {
+        listEl.innerHTML = '<div class="empty">No skipped stories</div>';
+        return;
+      }
+
+      listEl.innerHTML = skippedTopics.map(t => `
+        <div class="skipped-item">
+          <h4>${t.title}</h4>
+          <div class="summary">${t.summary}</div>
+          <button onclick="unskipStory('${t.id}')">↩ Bring Back</button>
+        </div>
+      `).join('');
+    }
+
+    async function unskipStory(topicId) {
+      await fetch(`/api/topics/${topicId}/preference`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'reset' })
+      });
+      preferences.skipped = preferences.skipped.filter(id => id !== topicId);
+      updateStats();
+      renderSkippedList();
+      toast('↩ Story restored');
     }
     
     async function setPreference(topicId, status) {
