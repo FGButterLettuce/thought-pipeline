@@ -593,7 +593,7 @@
       }
       nextStory();
     }
-    
+
     async function likeStory() {
       if (topics[currentIndex]) {
         await setPreference(topics[currentIndex].id, 'interested');
@@ -601,8 +601,19 @@
       }
       nextStory();
     }
-    
+
+    function stopAudio() {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+      }
+      isPlaying = false;
+      updatePlayButton();
+      document.getElementById('progress-bar').style.width = '0%';
+    }
+
     function nextStory() {
+      stopAudio();
       currentIndex++;
       if (currentIndex >= topics.length) currentIndex = 0;
       renderDrivingMode();
