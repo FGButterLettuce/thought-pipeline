@@ -434,6 +434,17 @@
   </style>
 </head>
 <body>
+  <script>
+    // Cache buster - force reload if cached
+    (function() {
+      const buildTime = '202602111601';
+      const lastBuild = localStorage.getItem('thoughtPipelineBuild');
+      if (lastBuild && lastBuild !== buildTime) {
+        location.reload(true);
+      }
+      localStorage.setItem('thoughtPipelineBuild', buildTime);
+    })();
+  </script>
   <header>
     <h1>⚡ Thought Pipeline</h1>
     <button class="mode-toggle" id="mode-btn" onclick="toggleMode()">🚗 Drive</button>
@@ -514,6 +525,16 @@
   <div class="toast" id="toast"></div>
 
   <script>
+    // Global cache buster for all fetch requests
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+      if (typeof url === 'string' && url.startsWith('/api/')) {
+        const separator = url.includes('?') ? '&' : '?';
+        url = url + separator + '_cb=' + Date.now();
+      }
+      return originalFetch(url, options);
+    };
+    
     let topics = [];
     let currentIndex = 0;
     let currentAudio = null;
