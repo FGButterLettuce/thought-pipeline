@@ -408,6 +408,7 @@
     let audioChunks = [];
     let driveMode = false;
     let preferences = { skipped: [], interested: [], recorded: [] };
+    let autoAdvanceTimeout = null;
     
     // Load topics and preferences
     async function loadTopics() {
@@ -555,12 +556,16 @@
         });
         
         currentAudio.onended = () => {
-          // Auto-advance after 2 seconds
-          setTimeout(() => nextStory(), 2000);
+          // Auto-advance after 3 seconds (giving time to read)
+          autoAdvanceTimeout = setTimeout(() => nextStory(), 3000);
         };
         
         currentAudio.play();
-      } catch(e) { nextStory(); }
+      } catch(e) { 
+        console.error('Auto-play error:', e);
+        isPlaying = false;
+        updatePlayButton();
+      }
     }
     
     function togglePlay() {
@@ -605,8 +610,15 @@
     }
 
     function stopAudio() {
+      if (autoAdvanceTimeout) {
+        clearTimeout(autoAdvanceTimeout);
+        autoAdvanceTimeout = null;
+      }
       if (currentAudio) {
         currentAudio.pause();
+        currentAudio.onended = null;
+        currentAudio.onerror = null;
+        currentAudio.ontimeupdate = null;
         currentAudio = null;
       }
       isPlaying = false;
