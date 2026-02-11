@@ -297,6 +297,18 @@
       transform: translateX(-50%);
       color: #333;
       font-size: 12px;
+      pointer-events: none;
+    }
+    
+    .story-card {
+      background: linear-gradient(180deg, #141414 0%, #0d0d0d 100%);
+      border: 2px solid #222;
+      border-radius: 20px;
+      padding: 24px;
+      max-height: 60vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
     }
   </style>
 </head>
@@ -632,13 +644,34 @@
       setTimeout(() => t.classList.remove('show'), 2000);
     }
     
-    // Swipe support
+    // Swipe support - only on story viewer area, not when scrolling content
     let touchStartY = 0;
-    document.addEventListener('touchstart', e => touchStartY = e.touches[0].clientY);
-    document.addEventListener('touchend', e => {
-      const diff = touchStartY - e.changedTouches[0].clientY;
-      if (Math.abs(diff) > 50 && driveMode) {
-        if (diff > 0) nextStory(); // Swipe up = next
+    let touchStartX = 0;
+    let touchStartTime = 0;
+    
+    document.getElementById('story-viewer').addEventListener('touchstart', e => {
+      touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
+      touchStartTime = Date.now();
+    }, { passive: true });
+    
+    document.getElementById('story-viewer').addEventListener('touchend', e => {
+      if (!driveMode) return;
+      
+      const diffY = touchStartY - e.changedTouches[0].clientY;
+      const diffX = Math.abs(touchStartX - e.changedTouches[0].clientX);
+      const duration = Date.now() - touchStartTime;
+      
+      // Only trigger if:
+      // - Vertical swipe is significant (100px+)
+      // - Horizontal movement is minimal (not a diagonal swipe)
+      // - Swipe was quick (less than 300ms)
+      // - Not currently scrolling inside the card
+      const storyCard = document.querySelector('.story-card');
+      const isScrollingContent = storyCard && storyCard.scrollTop > 10;
+      
+      if (Math.abs(diffY) > 100 && diffX < 50 && duration < 300 && !isScrollingContent) {
+        if (diffY > 0) nextStory(); // Swipe up = next
       }
     });
     
