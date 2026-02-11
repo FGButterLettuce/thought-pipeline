@@ -1,0 +1,9 @@
+tunnel: ab662fe1-618c-4252-ac27-6eaccbc7163f
+credentials-file: /home/niranjan/.cloudflared/ab662fe1-618c-4252-ac27-6eaccbc7163f.json
+
+ingress:
+  - hostname: thought.niranjanrakesh.me
+    service: https://127.0.0.1:3457
+    originRequest:
+      noTLSVerify: true
+  - service: http_status:404
