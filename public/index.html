@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <meta name="version" content="2026-02-11-v2">
+  <meta name="version" content="2026-02-13-v8">
   <title>Thought Pipeline</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -34,6 +34,18 @@
       background: #111; color: #888; font-size: 12px; cursor: pointer;
     }
     .mode-toggle.active { background: #4ade80; color: #0a0a0a; border-color: #4ade80; }
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+    .drafts-btn {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid #4ade80;
+      background: #1a2e1a; color: #4ade80; font-size: 12px; font-weight: 500;
+      cursor: pointer; display: flex; align-items: center; gap: 4px;
+    }
+    .drafts-btn:hover { background: #4ade80; color: #0a0a0a; }
+    .drafts-btn .count {
+      background: #4ade80; color: #0a0a0a;
+      font-size: 10px; font-weight: 600;
+      padding: 2px 6px; border-radius: 10px;
+    }
     
     /* ========== NORMAL MODE ========== */
     .normal-mode {
@@ -62,6 +74,8 @@
     .topic-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
     .topic-date { font-size: 11px; color: #666; background: #1a1a1a; padding: 2px 8px; border-radius: 4px; }
     .card-actions { display: flex; gap: 10px; }
+    .card-actions-secondary { display: flex; gap: 10px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #222; }
+    .card-actions-secondary .btn { font-size: 11px; padding: 8px 10px; flex: 1; }
     .btn {
       flex: 1; padding: 12px; border: none; border-radius: 8px;
       font-size: 14px; font-weight: 500; cursor: pointer;
@@ -75,91 +89,78 @@
     .btn-like:hover { background: #c084fc; color: #0a0a0a; }
     .btn-skip { background: #1a1a1a; color: #666; }
     .btn-skip:hover { background: #444; color: #fff; }
+    .btn-delete { background: #2e1a1a; color: #f87171; font-size: 12px; }
+    .btn-delete:hover { background: #f87171; color: #0a0a0a; }
+    .btn-skip-delete { background: #3a2e1a; color: #fbbf24; font-size: 12px; }
+    .btn-skip-delete:hover { background: #fbbf24; color: #0a0a0a; }
     
     /* ========== DRIVING MODE ========== */
     .driving-mode {
-      height: calc(100vh - 60px);
+      height: calc(100dvh - 105px);
       display: none;
       flex-direction: column;
+      justify-content: space-between;
     }
     .driving-mode.active { display: flex; }
     
-    /* Story Card - One at a time */
+    /* Story Card - Compact */
     .story-viewer {
       flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      padding: 20px;
+      padding: 12px 16px;
       position: relative;
+      overflow: hidden;
     }
     
     .story-card {
-      background: linear-gradient(180deg, #141414 0%, #0d0d0d 100%);
-      border: 2px solid #222;
-      border-radius: 20px;
-      padding: 20px;
-      max-height: 60vh;
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 16px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      height: 100%;
+      max-height: 100%;
     }
 
     .story-card h2 {
-      font-size: 20px; font-weight: 700;
-      margin-bottom: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
       line-height: 1.3;
       color: #fff;
-      flex-shrink: 0;
     }
 
     .story-scrollable {
       flex: 1;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
-      padding-right: 8px;
-    }
-
-    .story-scrollable::-webkit-scrollbar {
-      width: 4px;
-    }
-    .story-scrollable::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    .story-scrollable::-webkit-scrollbar-thumb {
-      background: #333;
-      border-radius: 2px;
+      min-height: 0;
     }
 
     .story-card .summary {
-      font-size: 16px;
-      line-height: 1.6;
+      font-size: 15px;
+      line-height: 1.5;
       color: #ccc;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
 
     .story-card .details {
-      font-size: 14px;
-      line-height: 1.5;
+      font-size: 13px;
+      line-height: 1.4;
       color: #888;
-      padding-top: 12px;
-      border-top: 1px solid #222;
     }
     
-    .story-counter {
-      position: absolute;
-      top: 10px;
-      right: 20px;
-      font-size: 14px;
-      color: #444;
+    /* Progress Bar with Queue Counter */
+    .progress-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
     }
-    
-    /* Progress Bar */
     .progress-container {
-      position: absolute;
-      top: 0;
-      left: 20px;
-      right: 20px;
+      flex: 1;
       height: 4px;
       background: #222;
       border-radius: 2px;
@@ -171,40 +172,45 @@
       width: 0%;
       transition: width 0.1s linear;
     }
+    .queue-badge {
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      background: #1a1a1a;
+      padding: 4px 10px;
+      border-radius: 12px;
+      border: 1px solid #333;
+      white-space: nowrap;
+    }
     
-    /* Control Buttons - HUGE */
+    /* Control Buttons - Compact */
     .driving-controls {
       display: flex;
-      gap: 16px;
-      padding: 20px;
-      padding-bottom: max(40px, env(safe-area-inset-bottom, 40px));
-      padding-left: max(20px, env(safe-area-inset-left, 20px));
-      padding-right: max(20px, env(safe-area-inset-right, 20px));
+      gap: 8px;
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
       background: #0a0a0a;
     }
     
     .drive-btn {
       flex: 1;
-      height: 100px;
+      height: 64px;
       border: none;
-      border-radius: 20px;
-      font-size: 24px;
-      font-weight: 700;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 600;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 2px;
       transition: transform 0.1s;
     }
     
-    .drive-btn:active {
-      transform: scale(0.95);
-    }
+    .drive-btn:active { transform: scale(0.95); }
     
     .drive-btn span {
-      font-size: 14px;
+      font-size: 11px;
       font-weight: 500;
       opacity: 0.8;
     }
@@ -212,13 +218,13 @@
     .btn-skip {
       background: #1a1a1a;
       color: #666;
-      border: 2px solid #333;
+      border: 1px solid #333;
     }
     
     .btn-play {
       background: #1a2e1a;
       color: #4ade80;
-      border: 2px solid #4ade80;
+      border: 1px solid #4ade80;
     }
     .btn-play.paused {
       background: #4ade80;
@@ -326,6 +332,20 @@
       background: #4ade80;
       color: #0a0a0a;
     }
+    .skipped-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .skipped-actions .btn-delete {
+      background: #3a1e1e;
+      color: #f87171;
+      border-color: #f87171;
+    }
+    .skipped-actions .btn-delete:hover {
+      background: #f87171;
+      color: #0a0a0a;
+    }
 
     /* Drafts View */
     .drafts-view {
@@ -402,6 +422,15 @@
       background: #4ade80;
       color: #0a0a0a;
     }
+    .draft-item button.btn-delete-draft {
+      background: #3a1e1e;
+      color: #f87171;
+      border-color: #f87171;
+    }
+    .draft-item button.btn-delete-draft:hover {
+      background: #f87171;
+      color: #0a0a0a;
+    }
 
     /* Loading overlay for TTS generation */
     .tts-loading-overlay {
@@ -442,15 +471,24 @@
     }
     
     .stats-bar {
-      padding: 10px 20px;
-      background: #111;
+      padding: 8px 16px;
+      background: #0d0d0d;
       border-bottom: 1px solid #1a1a1a;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .stat {
       font-size: 12px;
       color: #666;
-      display: flex;
-      gap: 20px;
+      cursor: pointer;
+      transition: color 0.2s;
     }
-    .stats-bar span { color: #4ade80; }
+    .stat:hover { color: #888; }
+    .stat b { font-weight: 600; }
+    .stat.recorded b { color: #4ade80; }
+    .stat.interested b { color: #c084fc; }
+    .stat.skipped b { color: #f87171; }
     
     .generating {
       position: fixed;
@@ -492,24 +530,10 @@
     
     /* Swipe hint */
     .swipe-hint {
-      position: absolute;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #333;
-      font-size: 12px;
-      pointer-events: none;
-    }
-    
-    .story-card {
-      background: linear-gradient(180deg, #141414 0%, #0d0d0d 100%);
-      border: 2px solid #222;
-      border-radius: 20px;
-      padding: 24px;
-      max-height: 60vh;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      text-align: center;
+      color: #444;
+      font-size: 11px;
+      padding: 4px 0;
     }
   </style>
 </head>
@@ -527,14 +551,19 @@
   </script>
   <header>
     <h1>⚡ Thought Pipeline</h1>
-    <button class="mode-toggle" id="mode-btn" onclick="toggleMode()">🚗 Drive</button>
+    <div class="header-actions">
+      <button class="drafts-btn" id="drafts-btn" onclick="toggleDraftsView()">
+        📝 Drafts <span class="count" id="drafts-count">0</span>
+      </button>
+      <button class="mode-toggle" id="mode-btn" onclick="toggleMode()">🚗 Drive</button>
+    </div>
   </header>
   
   <!-- Stats Bar -->
   <div class="stats-bar" id="stats-bar">
-    <span id="recorded-stat" onclick="toggleDraftsView()" style="cursor:pointer;color:#4ade80;">✓ 0 recorded</span>
-    <span>❤ 0 interested</span>
-    <span id="skipped-stat" onclick="toggleSkippedView()" style="cursor:pointer;">✕ 0 skipped</span>
+    <span class="stat recorded" id="recorded-stat" onclick="toggleDraftsView()">✓ <b>0</b> recorded</span>
+    <span class="stat interested">❤ <b>0</b> interested</span>
+    <span class="stat skipped" id="skipped-stat" onclick="toggleSkippedView()">✕ <b>0</b> skipped</span>
   </div>
 
   <!-- Skipped Stories View -->
@@ -561,33 +590,22 @@
   <!-- Driving Mode -->
   <div class="driving-mode" id="driving-mode">
     <div class="story-viewer" id="story-viewer">
-      <div class="progress-container">
-        <div class="progress-bar" id="progress-bar"></div>
+      <div class="progress-header">
+        <div class="progress-container">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="queue-badge" id="queue-badge">1/35</div>
       </div>
-      <div class="story-counter" id="story-counter">1 / 5</div>
-      <div id="story-content">
+      <div class="story-card" id="story-content">
         <div class="empty">Loading stories...</div>
       </div>
-      <div class="swipe-hint">↑ Scroll for more</div>
     </div>
 
     <div class="driving-controls">
-      <button class="drive-btn btn-skip" onclick="skipStory()">
-        ⏭
-        <span>SKIP</span>
-      </button>
-      <button class="drive-btn btn-play" id="drive-play-btn" onclick="togglePlay()">
-        ▶
-        <span>PLAY</span>
-      </button>
-      <button class="drive-btn" style="background:#2e1a2e;color:#c084fc;border:2px solid #c084fc" onclick="likeStory()">
-        ❤
-        <span>LIKE</span>
-      </button>
-      <button class="drive-btn btn-accept" onclick="acceptStory()">
-        ✓
-        <span>RECORD</span>
-      </button>
+      <button class="drive-btn btn-skip" onclick="skipStory()">⏭<span>SKIP</span></button>
+      <button class="drive-btn btn-play" id="drive-play-btn" onclick="togglePlay()">▶<span>PLAY</span></button>
+      <button class="drive-btn" style="background:#2e1a2e;color:#c084fc;border:1px solid #c084fc" onclick="likeStory()">❤<span>LIKE</span></button>
+      <button class="drive-btn btn-accept" onclick="acceptStory()">✓<span>RECORD</span></button>
     </div>
   </div>
   
@@ -660,13 +678,19 @@
     }
     
     function updateStats() {
-      const statsEl = document.getElementById('stats-bar');
-      if (statsEl) {
-        statsEl.innerHTML = `
-          <span>✓ ${preferences.recorded.length} recorded</span>
-          <span>❤ ${preferences.interested.length} interested</span>
-          <span id="skipped-stat" onclick="toggleSkippedView()" style="cursor:pointer;">✕ ${preferences.skipped.length} skipped</span>
-        `;
+      // Update stat numbers in the combined bar
+      const recordedStat = document.querySelector('.stat.recorded b');
+      const interestedStat = document.querySelector('.stat.interested b');
+      const skippedStat = document.querySelector('.stat.skipped b');
+      
+      if (recordedStat) recordedStat.textContent = preferences.recorded.length;
+      if (interestedStat) interestedStat.textContent = preferences.interested.length;
+      if (skippedStat) skippedStat.textContent = preferences.skipped.length;
+      
+      // Update drafts button count
+      const draftsCount = document.getElementById('drafts-count');
+      if (draftsCount) {
+        draftsCount.textContent = preferences.recorded.length;
       }
     }
 
@@ -695,10 +719,13 @@
       }
 
       listEl.innerHTML = skippedTopics.map(t => `
-        <div class="skipped-item">
+        <div class="skipped-item" id="skipped-${t.id}">
           <h4>${t.title}</h4>
           <div class="summary">${t.summary}</div>
-          <button onclick="unskipStory('${t.id}')">↩ Bring Back</button>
+          <div class="skipped-actions">
+            <button onclick="unskipStory('${t.id}')">↩ Bring Back</button>
+            <button class="btn-delete" onclick="deleteSkippedTopic('${t.id}')">🗑 Delete</button>
+          </div>
         </div>
       `).join('');
     }
@@ -713,6 +740,19 @@
       updateStats();
       renderSkippedList();
       toast('↩ Story restored');
+    }
+
+    async function deleteSkippedTopic(topicId) {
+      if (!confirm('Permanently delete this skipped topic?\n\nThis cannot be undone!')) return;
+      try {
+        await fetch(`/api/topics/${topicId}`, { method: 'DELETE' });
+        preferences.skipped = preferences.skipped.filter(id => id !== topicId);
+        document.getElementById(`skipped-${topicId}`).remove();
+        updateStats();
+        toast('🗑 Topic deleted');
+      } catch (err) {
+        toast('Failed to delete topic');
+      }
     }
 
     // ========== DRAFTS VIEW ==========
@@ -738,12 +778,13 @@
         }
 
         listEl.innerHTML = drafts.map(d => `
-          <div class="draft-item">
+          <div class="draft-item" id="draft-${d.id}">
             <h3>${d.topicTitle}</h3>
             <div class="draft-date">${new Date(d.createdAt).toLocaleString()}</div>
             <div class="draft-content">${escapeHtml(d.draft)}</div>
             <div class="draft-actions">
               <button onclick="copyDraft('${d.id}')">📋 Copy</button>
+              <button class="btn-delete-draft" onclick="deleteDraft('${d.id}')">🗑 Delete</button>
             </div>
           </div>
         `).join('');
@@ -770,6 +811,23 @@
         }
       } catch (err) {
         toast('Failed to copy draft');
+      }
+    }
+
+    async function deleteDraft(draftId) {
+      if (!confirm('Delete this draft permanently? This cannot be undone.')) return;
+      try {
+        await fetch(`/api/drafts/${draftId}`, { method: 'DELETE' });
+        document.getElementById(`draft-${draftId}`).remove();
+        // Update the count
+        const draftsCount = document.getElementById('drafts-count');
+        if (draftsCount) {
+          const currentCount = parseInt(draftsCount.textContent) || 0;
+          draftsCount.textContent = Math.max(0, currentCount - 1);
+        }
+        toast('🗑 Draft deleted');
+      } catch (err) {
+        toast('Failed to delete draft');
       }
     }
 
@@ -801,6 +859,10 @@
             <button class="btn btn-like" onclick="likeTopicNormal('${t.id}')">❤ Like</button>
             <button class="btn btn-skip" onclick="skipTopicNormal('${t.id}')">⏭ Skip</button>
           </div>
+          <div class="card-actions-secondary">
+            <button class="btn btn-delete" onclick="deleteTopicNormal('${t.id}')">🗑 Delete</button>
+            <button class="btn btn-skip-delete" onclick="skipAndDeleteTopicNormal('${t.id}')">⏭🗑 Skip & Delete</button>
+          </div>
         </div>
       `).join('');
     }
@@ -812,9 +874,34 @@
     }
 
     async function skipTopicNormal(topicId) {
+      const result = confirm('Skip this topic?\n\n• OK = Skip (can be restored from Skipped view)\n• Cancel = Do nothing');
+      if (!result) return;
       await setPreference(topicId, 'skipped');
       document.getElementById(`topic-${topicId}`).remove();
       toast('⏭ Skipped — hiding similar topics');
+    }
+
+    async function skipAndDeleteTopicNormal(topicId) {
+      if (!confirm('Skip AND permanently delete this topic?\n\nThis cannot be undone!')) return;
+      await setPreference(topicId, 'skipped');
+      try {
+        await fetch(`/api/topics/${topicId}`, { method: 'DELETE' });
+        document.getElementById(`topic-${topicId}`).remove();
+        toast('🗑 Topic skipped and deleted');
+      } catch (err) {
+        toast('Failed to delete topic');
+      }
+    }
+
+    async function deleteTopicNormal(topicId) {
+      if (!confirm('Delete this topic permanently? This cannot be undone.')) return;
+      try {
+        await fetch(`/api/topics/${topicId}`, { method: 'DELETE' });
+        document.getElementById(`topic-${topicId}`).remove();
+        toast('🗑 Topic deleted');
+      } catch (err) {
+        toast('Failed to delete topic');
+      }
     }
     
     async function playTopic(id, btn) {
@@ -866,14 +953,13 @@
     
     function renderDrivingMode() {
       const topic = topics[currentIndex];
-      document.getElementById('story-counter').textContent = `${currentIndex + 1} / ${topics.length}`;
+      document.getElementById('queue-badge').textContent = `${currentIndex + 1}/${topics.length}`;
       document.getElementById('story-content').innerHTML = `
-        <div class="story-card">
-          <h2>${topic.title}</h2>
-          <div class="story-scrollable" id="story-scroll">
-            <div class="summary">${topic.summary}</div>
-            ${topic.details ? `<div class="details">${topic.details}</div>` : ''}
-          </div>
+        <h2>${topic.title}</h2>
+        <div class="story-scrollable" id="story-scroll">
+          <div class="summary">${topic.summary}</div>
+          ${topic.details ? `<div class="details">${topic.details}</div>` : ''}
+          <div class="swipe-hint">↑ Scroll for more</div>
         </div>
       `;
       updatePlayButton();

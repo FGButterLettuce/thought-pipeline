@@ -85,8 +85,15 @@ function getAllTopics() {
   if (!fs.existsSync(SCOUT_DIR)) return [];
   const files = fs.readdirSync(SCOUT_DIR).filter(f => f.endsWith('.md')).sort().reverse();
   const topics = [];
+  const seenIds = new Set();
   for (const file of files) {
-    topics.push(...parseScoutFile(path.join(SCOUT_DIR, file)));
+    const fileTopics = parseScoutFile(path.join(SCOUT_DIR, file));
+    for (const topic of fileTopics) {
+      if (!seenIds.has(topic.id)) {
+        seenIds.add(topic.id);
+        topics.push(topic);
+      }
+    }
   }
   return topics;
 }
@@ -110,8 +117,14 @@ function saveDrafts(drafts) {
 // --- API Routes ---
 
 app.get('/api/topics', (req, res) => {
-  const scoutTopics = getAllTopics().map(t => ({ ...t, topicSource: 'scout' }));
-  const userTopics = getUserTopics().map(t => ({ ...t, topicSource: 'user' }));
+  const prefs = getPreferences();
+  const deletedIds = prefs.deleted || [];
+  const scoutTopics = getAllTopics()
+    .filter(t => !deletedIds.includes(t.id))
+    .map(t => ({ ...t, topicSource: 'scout' }));
+  const userTopics = getUserTopics()
+    .filter(t => !deletedIds.includes(t.id))
+    .map(t => ({ ...t, topicSource: 'user' }));
   res.json([...userTopics, ...scoutTopics]);
 });
 
@@ -344,7 +357,7 @@ app.delete('/api/drafts/:id', (req, res) => {
 // --- Preferences System ---
 function getPreferences() {
   try { return JSON.parse(fs.readFileSync(PREFERENCES_FILE, 'utf-8')); } 
-  catch { return { skipped: [], interested: [], recorded: [] }; }
+  catch { return { skipped: [], interested: [], recorded: [], deleted: [] }; }
 }
 
 function savePreferences(prefs) {
@@ -371,13 +384,34 @@ app.post('/api/topics/:id/preference', (req, res) => {
   res.json({ ok: true, status });
 });
 
+// Delete topic (adds to deleted list)
+app.delete('/api/topics/:id', (req, res) => {
+  const prefs = getPreferences();
+  const topicId = req.params.id;
+  
+  // Add to deleted list
+  if (!prefs.deleted) prefs.deleted = [];
+  if (!prefs.deleted.includes(topicId)) {
+    prefs.deleted.push(topicId);
+  }
+  
+  // Also remove from other lists
+  prefs.skipped = prefs.skipped.filter(id => id !== topicId);
+  prefs.interested = prefs.interested.filter(id => id !== topicId);
+  prefs.recorded = prefs.recorded.filter(id => id !== topicId);
+  
+  savePreferences(prefs);
+  res.json({ ok: true, deleted: topicId });
+});
+
 // Get filtered topics (for driving mode)
 app.get('/api/topics/feed', (req, res) => {
   const prefs = getPreferences();
   const allTopics = [...getAllTopics(), ...getUserTopics()];
+  const deletedIds = prefs.deleted || [];
   
-  // Filter out skipped topics
-  const feed = allTopics.filter(t => !prefs.skipped.includes(t.id));
+  // Filter out skipped and deleted topics
+  const feed = allTopics.filter(t => !prefs.skipped.includes(t.id) && !deletedIds.includes(t.id));
   
   // Sort: interested first, then new, then recorded last
   feed.sort((a, b) => {
