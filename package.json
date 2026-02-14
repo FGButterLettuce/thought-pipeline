@@ -4,11 +4,14 @@
   "description": "Mobile-first commute companion for turning topics into LinkedIn drafts",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "thyme": "node thyme-bot.js"
   },
   "dependencies": {
+    "dotenv": "^16.6.1",
     "express": "^4.21.0",
+    "marked": "^15.0.0",
     "multer": "^1.4.5-lts.1",
-    "marked": "^15.0.0"
+    "node-telegram-bot-api": "^0.66.0"
   }
 }
