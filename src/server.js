@@ -333,7 +333,7 @@ app.post('/api/record/:topicId', upload.single('audio'), async (req, res) => {
     
     const draft = JSON.parse(chatResult.toString()).choices[0].message.content;
     
-    // Save draft
+    // Save draft with template info
     const drafts = getDrafts();
     const draftObj = {
       id: crypto.randomUUID(),
@@ -341,6 +341,7 @@ app.post('/api/record/:topicId', upload.single('audio'), async (req, res) => {
       topicTitle: topic.title,
       transcript,
       draft,
+      template: template || 'default',
       createdAt: new Date().toISOString()
     };
     drafts.unshift(draftObj);
@@ -351,6 +352,148 @@ app.post('/api/record/:topicId', upload.single('audio'), async (req, res) => {
     console.error('Draft generation error:', err.message);
     res.status(500).json({ error: 'Failed to generate draft' });
   }
+});
+
+// Draft Analytics
+app.get('/api/drafts/analytics', (req, res) => {
+  const drafts = getDrafts();
+  const now = new Date();
+  const oneWeekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+  const twoWeeksAgo = new Date(now - 14 * 24 * 60 * 60 * 1000);
+  
+  // Weekly stats
+  const thisWeekDrafts = drafts.filter(d => new Date(d.createdAt) >= oneWeekAgo);
+  const lastWeekDrafts = drafts.filter(d => {
+    const dDate = new Date(d.createdAt);
+    return dDate >= twoWeeksAgo && dDate < oneWeekAgo;
+  });
+  
+  // Template usage (extracted from recording history - stored in draft data)
+  const templateCounts = {};
+  drafts.forEach(d => {
+    const template = d.template || 'default';
+    templateCounts[template] = (templateCounts[template] || 0) + 1;
+  });
+  
+  // Streak calculation
+  const draftsByDay = {};
+  drafts.forEach(d => {
+    const day = d.createdAt.split('T')[0];
+    draftsByDay[day] = (draftsByDay[day] || 0) + 1;
+  });
+  
+  // Calculate current streak
+  let streak = 0;
+  let checkDate = new Date();
+  while (true) {
+    const dayStr = checkDate.toISOString().split('T')[0];
+    if (draftsByDay[dayStr] || checkDate.toDateString() === now.toDateString()) {
+      if (draftsByDay[dayStr]) streak++;
+    } else {
+      break;
+    }
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+  
+  res.json({
+    totalDrafts: drafts.length,
+    thisWeek: thisWeekDrafts.length,
+    lastWeek: lastWeekDrafts.length,
+    templateUsage: templateCounts,
+    streak: streak,
+    draftsByDay: draftsByDay,
+    mostProductiveDay: Object.entries(draftsByDay)
+      .sort((a, b) => b[1] - a[1])[0]?.[0] || null
+  });
+});
+
+// Draft Versions
+const DRAFT_VERSIONS_FILE = path.join(BASE, 'data', 'draft-versions.json');
+
+function getDraftVersions() {
+  try { return JSON.parse(fs.readFileSync(DRAFT_VERSIONS_FILE, 'utf-8')); } 
+  catch { return {}; }
+}
+
+function saveDraftVersions(versions) {
+  fs.writeFileSync(DRAFT_VERSIONS_FILE, JSON.stringify(versions, null, 2));
+}
+
+app.get('/api/drafts/:id/versions', (req, res) => {
+  const versions = getDraftVersions();
+  res.json(versions[req.params.id] || []);
+});
+
+app.post('/api/drafts/:id/versions', (req, res) => {
+  const { draft } = req.body;
+  const versions = getDraftVersions();
+  if (!versions[req.params.id]) versions[req.params.id] = [];
+  
+  versions[req.params.id].push({
+    draft,
+    createdAt: new Date().toISOString(),
+    version: versions[req.params.id].length + 1
+  });
+  
+  // Keep only last 20 versions
+  if (versions[req.params.id].length > 20) {
+    versions[req.params.id] = versions[req.params.id].slice(-20);
+  }
+  
+  saveDraftVersions(versions);
+  res.json({ ok: true });
+});
+
+// Draft Scheduling
+const SCHEDULED_DRAFTS_FILE = path.join(BASE, 'data', 'scheduled-drafts.json');
+
+function getScheduledDrafts() {
+  try { return JSON.parse(fs.readFileSync(SCHEDULED_DRAFTS_FILE, 'utf-8')); } 
+  catch { return []; }
+}
+
+function saveScheduledDrafts(scheduled) {
+  fs.writeFileSync(SCHEDULED_DRAFTS_FILE, JSON.stringify(scheduled, null, 2));
+}
+
+app.get('/api/drafts/scheduled', (req, res) => {
+  res.json(getScheduledDrafts());
+});
+
+app.post('/api/drafts/:id/schedule', (req, res) => {
+  const { date, time } = req.body; // date: YYYY-MM-DD, time: HH:mm
+  const drafts = getDrafts();
+  const draft = drafts.find(d => d.id === req.params.id);
+  if (!draft) return res.status(404).json({ error: 'Draft not found' });
+  
+  const scheduled = getScheduledDrafts();
+  const existingIndex = scheduled.findIndex(s => s.draftId === req.params.id);
+  
+  const scheduledItem = {
+    draftId: req.params.id,
+    topicTitle: draft.topicTitle,
+    draft: draft.draft,
+    scheduledDate: date,
+    scheduledTime: time,
+    scheduledAt: new Date().toISOString(),
+    notified: false
+  };
+  
+  if (existingIndex >= 0) {
+    scheduled[existingIndex] = scheduledItem;
+  } else {
+    scheduled.push(scheduledItem);
+  }
+  
+  saveScheduledDrafts(scheduled);
+  res.json({ ok: true, scheduled: scheduledItem });
+});
+
+app.delete('/api/drafts/:id/schedule', (req, res) => {
+  let scheduled = getScheduledDrafts();
+  scheduled = scheduled.filter(s => s.draftId !== req.params.id);
+  saveScheduledDrafts(scheduled);
+  res.json({ ok: true });
 });
 
 // Drafts CRUD
@@ -367,8 +510,17 @@ app.put('/api/drafts/:id', (req, res) => {
 
 app.delete('/api/drafts/:id', (req, res) => {
   let drafts = getDrafts();
+  const deletedDraft = drafts.find(d => d.id === req.params.id);
   drafts = drafts.filter(d => d.id !== req.params.id);
   saveDrafts(drafts);
+  
+  // Also remove from preferences.recorded to fix ghost drafts
+  if (deletedDraft) {
+    const prefs = getPreferences();
+    prefs.recorded = prefs.recorded.filter(id => id !== deletedDraft.topicId);
+    savePreferences(prefs);
+  }
+  
   res.json({ ok: true });
 });
 

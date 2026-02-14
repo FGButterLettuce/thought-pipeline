@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "id": "c640e360-cfe3-40af-8f1a-c7b0b29b5e80",
+    "topicId": "b6694eb0",
+    "topicTitle": "Tambo 1.0 — Generative UI SDK for React",
+    "transcript": "I'm trying this again. This is really bad. This is a really good thing. I agree. Anyway, I would make everything really easy for users and that means that users will get more overloaded with work, a lot more work streams, a lot more things happening with them. So that kind of is something that is a very big problem that people will be facing.",
+    "draft": "🚀 Imagine telling an AI exactly what you want to see on a dashboard, and it instantly renders the components for you. That's exactly what Tambo 1.0 achieves! \n\nThis innovative open-source toolkit allows AI agents to go beyond just generating text — they can now directly manipulate React components. With Tambo, you can register your components using Zod schemas, and the AI will dynamically stream props for you. Whether it’s pulling up a sales chart or updating a task board, this SDK makes the user experience seamless and intuitive.\n\nWhile this ease of use is groundbreaking, it does raise an important consideration: as we simplify tasks for users, we also risk adding complexity to their workflows. As fintech evolves, we must ensure that while we enhance capabilities, we’re equally mindful of managing the potential overload of information.\n\nTambo 1.0 is a fantastic step toward bridging the gap between what users need and what they actually see. This technology isn’t just about efficiency; it’s about creating smarter systems that adapt to user needs. \n\nCurious to learn more? Check it out here: [Tambo GitHub](https://github.com/tambo-ai/tambo). \n\nLet’s embrace this evolution while keeping user experience at the forefront!",
+    "createdAt": "2026-02-11T15:31:28.335Z"
+  }
+]

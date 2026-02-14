@@ -397,6 +397,151 @@
       display: none;
     }
     .drafts-view.active { display: block; }
+    
+    /* Analytics View */
+    .analytics-view {
+      position: fixed;
+      inset: 0;
+      background: #0a0a0a;
+      z-index: 1000;
+      padding: 20px;
+      overflow-y: auto;
+      display: none;
+    }
+    .analytics-view.active { display: block; }
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .analytics-card {
+      background: #111;
+      border: 1px solid #1e1e1e;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+    .analytics-card .number {
+      font-size: 32px;
+      font-weight: 700;
+      color: #4ade80;
+    }
+    .analytics-card .label {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+    .template-bar {
+      background: #1a1a1a;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .template-bar .name {
+      color: #ccc;
+      font-size: 14px;
+    }
+    .template-bar .count {
+      background: #4ade80;
+      color: #0a0a0a;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    /* Calendar View */
+    .calendar-view {
+      position: fixed;
+      inset: 0;
+      background: #0a0a0a;
+      z-index: 1000;
+      padding: 20px;
+      overflow-y: auto;
+      display: none;
+    }
+    .calendar-view.active { display: block; }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 16px;
+    }
+    .calendar-day {
+      aspect-ratio: 1;
+      background: #111;
+      border: 1px solid #1e1e1e;
+      border-radius: 8px;
+      padding: 6px;
+      font-size: 12px;
+      color: #666;
+      position: relative;
+    }
+    .calendar-day.weekday {
+      background: #1a1a1a;
+      aspect-ratio: auto;
+      padding: 8px;
+      text-align: center;
+      font-weight: 600;
+    }
+    .calendar-day.today {
+      border-color: #4ade80;
+    }
+    .calendar-day .date-num {
+      font-weight: 600;
+      color: #ccc;
+    }
+    .calendar-day .draft-indicator {
+      position: absolute;
+      bottom: 4px;
+      left: 4px;
+      right: 4px;
+      height: 4px;
+      background: #4ade80;
+      border-radius: 2px;
+    }
+    .calendar-day .draft-count {
+      position: absolute;
+      bottom: 10px;
+      right: 4px;
+      font-size: 10px;
+      color: #4ade80;
+      font-weight: 600;
+    }
+    .calendar-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .calendar-nav button {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #ccc;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .scheduled-item {
+      background: #1a2e1a;
+      border: 1px solid #4ade80;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+    .scheduled-item .time {
+      font-size: 12px;
+      color: #4ade80;
+      margin-bottom: 4px;
+    }
+    .scheduled-item .title {
+      font-size: 14px;
+      color: #ccc;
+    }
     .drafts-header {
       display: flex;
       justify-content: space-between;
@@ -603,6 +748,8 @@
     <span class="stat recorded" id="recorded-stat" onclick="toggleDraftsView()">✓ <b>0</b> recorded</span>
     <span class="stat interested">❤ <b>0</b> interested</span>
     <span class="stat skipped" id="skipped-stat" onclick="toggleSkippedView()">✕ <b>0</b> skipped</span>
+    <span class="stat" onclick="toggleAnalyticsView()" style="margin-left: auto;">📊 Analytics</span>
+    <span class="stat" onclick="toggleCalendarView()">📅 Calendar</span>
   </div>
 
   <!-- Skipped Stories View -->
@@ -612,6 +759,52 @@
       <button onclick="toggleSkippedView()">✕ Close</button>
     </div>
     <div id="skipped-list"></div>
+  </div>
+
+  <!-- Analytics View -->
+  <div class="analytics-view" id="analytics-view">
+    <div class="drafts-header">
+      <h2>📊 Analytics</h2>
+      <button onclick="toggleAnalyticsView()">✕ Close</button>
+    </div>
+    <div id="analytics-content">
+      <div class="analytics-grid">
+        <div class="analytics-card">
+          <div class="number" id="stat-total">0</div>
+          <div class="label">Total Drafts</div>
+        </div>
+        <div class="analytics-card">
+          <div class="number" id="stat-streak">0</div>
+          <div class="label">Day Streak</div>
+        </div>
+        <div class="analytics-card">
+          <div class="number" id="stat-thisweek">0</div>
+          <div class="label">This Week</div>
+        </div>
+        <div class="analytics-card">
+          <div class="number" id="stat-lastweek">0</div>
+          <div class="label">Last Week</div>
+        </div>
+      </div>
+      <h3 style="color: #ccc; font-size: 16px; margin-bottom: 12px;">Templates Used</h3>
+      <div id="template-usage"></div>
+    </div>
+  </div>
+
+  <!-- Calendar View -->
+  <div class="calendar-view" id="calendar-view">
+    <div class="drafts-header">
+      <h2>📅 Content Calendar</h2>
+      <button onclick="toggleCalendarView()">✕ Close</button>
+    </div>
+    <div class="calendar-nav">
+      <button onclick="changeMonth(-1)">← Prev</button>
+      <span id="calendar-month" style="color: #ccc; font-weight: 600;"></span>
+      <button onclick="changeMonth(1)">Next →</button>
+    </div>
+    <div class="calendar-grid" id="calendar-grid"></div>
+    <h3 style="color: #ccc; font-size: 16px; margin: 20px 0 12px;">Scheduled Posts</h3>
+    <div id="scheduled-list"></div>
   </div>
 
   <!-- Drafts View -->
@@ -833,6 +1026,142 @@
       }
     }
 
+    // ========== ANALYTICS VIEW ==========
+    function toggleAnalyticsView() {
+      const view = document.getElementById('analytics-view');
+      if (!view.classList.contains('active')) {
+        loadAnalytics();
+        view.classList.add('active');
+      } else {
+        view.classList.remove('active');
+      }
+    }
+
+    async function loadAnalytics() {
+      try {
+        const res = await fetch('/api/drafts/analytics');
+        const data = await res.json();
+        
+        document.getElementById('stat-total').textContent = data.totalDrafts;
+        document.getElementById('stat-streak').textContent = data.streak;
+        document.getElementById('stat-thisweek').textContent = data.thisWeek;
+        document.getElementById('stat-lastweek').textContent = data.lastWeek;
+        
+        // Template usage bars
+        const templateEl = document.getElementById('template-usage');
+        const templates = Object.entries(data.templateUsage).sort((a, b) => b[1] - a[1]);
+        if (templates.length === 0) {
+          templateEl.innerHTML = '<div class="empty">No template data yet</div>';
+        } else {
+          templateEl.innerHTML = templates.map(([name, count]) => `
+            <div class="template-bar">
+              <span class="name">${name === 'default' ? '📝 Default' : 
+                name === 'hot-take' ? '🔥 Hot Take' :
+                name === 'eli5' ? '🎯 ELI5' :
+                name === 'contrarian' ? '🎭 Contrarian' :
+                name === 'story' ? '📖 Story' :
+                name === 'lessons' ? '💡 Lessons' : name}</span>
+              <span class="count">${count}</span>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Failed to load analytics:', err);
+      }
+    }
+
+    // ========== CALENDAR VIEW ==========
+    let currentCalendarMonth = new Date();
+
+    function toggleCalendarView() {
+      const view = document.getElementById('calendar-view');
+      if (!view.classList.contains('active')) {
+        renderCalendar();
+        loadScheduledDrafts();
+        view.classList.add('active');
+      } else {
+        view.classList.remove('active');
+      }
+    }
+
+    function changeMonth(delta) {
+      currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() + delta);
+      renderCalendar();
+    }
+
+    async function renderCalendar() {
+      const year = currentCalendarMonth.getFullYear();
+      const month = currentCalendarMonth.getMonth();
+      
+      document.getElementById('calendar-month').textContent = 
+        new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      
+      // Get drafts for this month
+      const draftsRes = await fetch('/api/drafts');
+      const drafts = await draftsRes.json();
+      
+      const draftsByDay = {};
+      drafts.forEach(d => {
+        const dDate = new Date(d.createdAt);
+        if (dDate.getFullYear() === year && dDate.getMonth() === month) {
+          const day = dDate.getDate();
+          draftsByDay[day] = (draftsByDay[day] || 0) + 1;
+        }
+      });
+      
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const today = new Date();
+      const isThisMonth = today.getFullYear() === year && today.getMonth() === month;
+      
+      const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      let gridHTML = weekdays.map(d => `<div class="calendar-day weekday">${d}</div>`).join('');
+      
+      // Empty cells before first day
+      for (let i = 0; i < firstDay; i++) {
+        gridHTML += `<div class="calendar-day" style="background: #0a0a0a;"></div>`;
+      }
+      
+      // Days
+      for (let day = 1; day <= daysInMonth; day++) {
+        const isToday = isThisMonth && today.getDate() === day;
+        const draftCount = draftsByDay[day] || 0;
+        gridHTML += `
+          <div class="calendar-day ${isToday ? 'today' : ''}">
+            <span class="date-num">${day}</span>
+            ${draftCount > 0 ? `<div class="draft-indicator"></div><span class="draft-count">${draftCount}</span>` : ''}
+          </div>
+        `;
+      }
+      
+      document.getElementById('calendar-grid').innerHTML = gridHTML;
+    }
+
+    async function loadScheduledDrafts() {
+      try {
+        const res = await fetch('/api/drafts/scheduled');
+        const scheduled = await res.json();
+        const listEl = document.getElementById('scheduled-list');
+        
+        if (!scheduled.length) {
+          listEl.innerHTML = '<div class="empty">No posts scheduled</div>';
+          return;
+        }
+        
+        // Sort by date/time
+        scheduled.sort((a, b) => new Date(a.scheduledDate + 'T' + a.scheduledTime) - new Date(b.scheduledDate + 'T' + b.scheduledTime));
+        
+        listEl.innerHTML = scheduled.map(s => `
+          <div class="scheduled-item">
+            <div class="time">${s.scheduledDate} at ${s.scheduledTime}</div>
+            <div class="title">${s.topicTitle}</div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Failed to load scheduled drafts:', err);
+      }
+    }
+
     // ========== DRAFTS VIEW ==========
     function toggleDraftsView() {
       const view = document.getElementById('drafts-view');
@@ -846,8 +1175,13 @@
 
     async function loadDrafts() {
       try {
-        const res = await fetch('/api/drafts');
-        const drafts = await res.json();
+        const [draftsRes, scheduledRes] = await Promise.all([
+          fetch('/api/drafts'),
+          fetch('/api/drafts/scheduled')
+        ]);
+        const drafts = await draftsRes.json();
+        const scheduled = await scheduledRes.json();
+        const scheduledIds = new Set(scheduled.map(s => s.draftId));
         const listEl = document.getElementById('drafts-list');
 
         if (!drafts.length) {
@@ -859,16 +1193,145 @@
           <div class="draft-item" id="draft-${d.id}">
             <h3>${d.topicTitle}</h3>
             <div class="draft-date">${new Date(d.createdAt).toLocaleString()}</div>
-            <div class="draft-content">${escapeHtml(d.draft)}</div>
+            <div class="draft-content" id="draft-content-${d.id}" contenteditable="true" onblur="saveDraftEdit('${d.id}')">${escapeHtml(d.draft)}</div>
             <div class="draft-actions">
               <button onclick="copyDraft('${d.id}')">📋 Copy</button>
+              <button onclick="showVersions('${d.id}')">📜 Versions</button>
+              <button onclick="toggleScheduleDraft('${d.id}')">${scheduledIds.has(d.id) ? '✓ Scheduled' : '📅 Schedule'}</button>
               <button class="btn-delete-draft" onclick="deleteDraft('${d.id}')">🗑 Delete</button>
             </div>
+            <div id="versions-${d.id}" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid #222;"></div>
+            <div id="schedule-${d.id}" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid #222;"></div>
           </div>
         `).join('');
       } catch (err) {
         console.error('Failed to load drafts:', err);
         document.getElementById('drafts-list').innerHTML = '<div class="empty">Failed to load drafts</div>';
+      }
+    }
+
+    async function saveDraftEdit(draftId) {
+      const contentEl = document.getElementById(`draft-content-${draftId}`);
+      const newDraft = contentEl.innerText;
+      
+      // Save version before updating
+      const draftsRes = await fetch('/api/drafts');
+      const drafts = await draftsRes.json();
+      const draft = drafts.find(d => d.id === draftId);
+      if (draft) {
+        await fetch(`/api/drafts/${draftId}/versions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ draft: draft.draft })
+        });
+      }
+      
+      // Update draft
+      await fetch(`/api/drafts/${draftId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draft: newDraft })
+      });
+      toast('💾 Saved');
+    }
+
+    async function showVersions(draftId) {
+      const versionsEl = document.getElementById(`versions-${draftId}`);
+      if (versionsEl.style.display === 'block') {
+        versionsEl.style.display = 'none';
+        return;
+      }
+      
+      try {
+        const res = await fetch(`/api/drafts/${draftId}/versions`);
+        const versions = await res.json();
+        
+        if (!versions.length) {
+          versionsEl.innerHTML = '<div style="color:#666; font-size:12px;">No previous versions</div>';
+        } else {
+          versionsEl.innerHTML = `
+            <div style="color:#888; font-size:12px; margin-bottom:8px;">Previous Versions:</div>
+            ${versions.slice().reverse().map((v, i) => `
+              <div style="background:#1a1a1a; padding:8px; border-radius:6px; margin-bottom:6px;">
+                <div style="color:#666; font-size:10px;">Version ${v.version} • ${new Date(v.createdAt).toLocaleString()}</div>
+                <div style="color:#888; font-size:12px; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${v.draft.substring(0, 80)}...</div>
+                <button onclick="restoreVersion('${draftId}', '${v.draft.replace(/'/g, "\\'")}')" style="margin-top:6px; padding:4px 8px; font-size:11px;">↩ Restore</button>
+              </div>
+            `).join('')}
+          `;
+        }
+        versionsEl.style.display = 'block';
+      } catch (err) {
+        console.error('Failed to load versions:', err);
+      }
+    }
+
+    async function restoreVersion(draftId, draftText) {
+      // Save current as version first
+      const contentEl = document.getElementById(`draft-content-${draftId}`);
+      await fetch(`/api/drafts/${draftId}/versions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draft: contentEl.innerText })
+      });
+      
+      // Restore old version
+      contentEl.innerText = draftText;
+      await fetch(`/api/drafts/${draftId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draft: draftText })
+      });
+      toast('↩ Version restored');
+    }
+
+    function toggleScheduleDraft(draftId) {
+      const scheduleEl = document.getElementById(`schedule-${draftId}`);
+      if (scheduleEl.style.display === 'block') {
+        scheduleEl.style.display = 'none';
+        return;
+      }
+      
+      const today = new Date().toISOString().split('T')[0];
+      scheduleEl.innerHTML = `
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="date" id="schedule-date-${draftId}" value="${today}" style="background:#1a1a1a; border:1px solid #333; color:#ccc; padding:6px; border-radius:6px;">
+          <input type="time" id="schedule-time-${draftId}" value="09:00" style="background:#1a1a1a; border:1px solid #333; color:#ccc; padding:6px; border-radius:6px;">
+          <button onclick="scheduleDraft('${draftId}')" style="padding:6px 12px;">📅 Schedule</button>
+          <button onclick="unscheduleDraft('${draftId}')" style="padding:6px 12px; background:#3a1e1e; color:#f87171; border-color:#f87171;">✕ Cancel</button>
+        </div>
+      `;
+      scheduleEl.style.display = 'block';
+    }
+
+    async function scheduleDraft(draftId) {
+      const date = document.getElementById(`schedule-date-${draftId}`).value;
+      const time = document.getElementById(`schedule-time-${draftId}`).value;
+      if (!date || !time) {
+        toast('Please select date and time');
+        return;
+      }
+      
+      try {
+        await fetch(`/api/drafts/${draftId}/schedule`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date, time })
+        });
+        toast('📅 Draft scheduled');
+        loadDrafts();
+      } catch (err) {
+        toast('Failed to schedule');
+      }
+    }
+
+    async function unscheduleDraft(draftId) {
+      try {
+        await fetch(`/api/drafts/${draftId}/schedule`, { method: 'DELETE' });
+        toast('✕ Schedule cancelled');
+        loadDrafts();
+      } catch (err) {
+        toast('Failed to cancel');
       }
     }
 
