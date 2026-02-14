@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <meta name="version" content="2026-02-13-v8">
+  <meta name="version" content="2026-02-14-v1">
   <title>Thought Pipeline</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -236,7 +236,46 @@
       color: #4ade80;
       border: 2px solid #4ade80;
     }
-    
+
+    /* Voice Templates */
+    .template-selector {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      background: #0a0a0a;
+      border-top: 1px solid #1a1a1a;
+    }
+    .template-selector::-webkit-scrollbar { display: none; }
+
+    .template-chip {
+      flex-shrink: 0;
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid #333;
+      background: #141414;
+      color: #888;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .template-chip:hover {
+      border-color: #555;
+      color: #aaa;
+    }
+    .template-chip.active {
+      background: #1a2e1a;
+      border-color: #4ade80;
+      color: #4ade80;
+    }
+    .template-chip .emoji {
+      margin-right: 4px;
+    }
+
     /* Recording Overlay */
     .recording-overlay {
       position: fixed;
@@ -601,6 +640,28 @@
       </div>
     </div>
 
+    <!-- Voice Templates -->
+    <div class="template-selector" id="template-selector">
+      <button class="template-chip active" data-template="default" onclick="selectTemplate('default')">
+        <span class="emoji">📝</span>Default
+      </button>
+      <button class="template-chip" data-template="hot-take" onclick="selectTemplate('hot-take')">
+        <span class="emoji">🔥</span>Hot Take
+      </button>
+      <button class="template-chip" data-template="eli5" onclick="selectTemplate('eli5')">
+        <span class="emoji">🎯</span>ELI5
+      </button>
+      <button class="template-chip" data-template="contrarian" onclick="selectTemplate('contrarian')">
+        <span class="emoji">🎭</span>Contrarian
+      </button>
+      <button class="template-chip" data-template="story" onclick="selectTemplate('story')">
+        <span class="emoji">📖</span>Story
+      </button>
+      <button class="template-chip" data-template="lessons" onclick="selectTemplate('lessons')">
+        <span class="emoji">💡</span>Lessons
+      </button>
+    </div>
+
     <div class="driving-controls">
       <button class="drive-btn btn-skip" onclick="skipStory()">⏭<span>SKIP</span></button>
       <button class="drive-btn btn-play" id="drive-play-btn" onclick="togglePlay()">▶<span>PLAY</span></button>
@@ -651,6 +712,23 @@
     let driveMode = false;
     let preferences = { skipped: [], interested: [], recorded: [] };
     let autoAdvanceTimeout = null;
+    let selectedTemplate = 'default';
+
+    const TEMPLATE_PROMPTS = {
+      'default': '',
+      'hot-take': 'Frame this as a bold, slightly controversial opinion that challenges conventional wisdom. Be punchy and memorable.',
+      'eli5': 'Explain this concept simply as if to a non-technical executive. Use analogies and avoid jargon.',
+      'contrarian': 'Take an unexpected counter-position. What would most people get wrong about this?',
+      'story': 'Frame this as a personal anecdote or narrative with a clear beginning, conflict, and lesson.',
+      'lessons': 'Focus on actionable takeaways. What should the reader do differently after reading this?'
+    };
+
+    function selectTemplate(template) {
+      selectedTemplate = template;
+      document.querySelectorAll('.template-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.template === template);
+      });
+    }
     
     // Load topics and preferences
     async function loadTopics() {
@@ -1158,14 +1236,15 @@
       try {
         const fd = new FormData();
         fd.append('audio', blob, 'recording.webm');
+        fd.append('template', selectedTemplate);
         const res = await (await fetch(`/api/record/${topicId}`, { method: 'POST', body: fd })).json();
         document.getElementById('generating').classList.remove('active');
         if (res.error) { toast(res.error); return; }
         toast('✓ Draft created!');
         if (driveMode) nextStory();
-      } catch(e) { 
+      } catch(e) {
         document.getElementById('generating').classList.remove('active');
-        toast('Failed to create draft'); 
+        toast('Failed to create draft');
       }
     }
     

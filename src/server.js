@@ -266,19 +266,31 @@ app.post('/api/tts/:topicId', (req, res) => {
 // Upload voice recording
 app.post('/api/record/:topicId', upload.single('audio'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No audio file' });
-  
+
   const topics = [...getAllTopics(), ...getUserTopics()];
   const topic = topics.find(t => t.id === req.params.topicId);
   if (!topic) return res.status(404).json({ error: 'Topic not found' });
-  
+
+  // Get template from request
+  const template = req.body.template || 'default';
+  const templatePrompts = {
+    'default': '',
+    'hot-take': 'Frame this as a bold, slightly controversial opinion that challenges conventional wisdom. Be punchy and memorable.',
+    'eli5': 'Explain this concept simply as if to a non-technical executive. Use analogies and avoid jargon.',
+    'contrarian': 'Take an unexpected counter-position. What would most people get wrong about this?',
+    'story': 'Frame this as a personal anecdote or narrative with a clear beginning, conflict, and lesson.',
+    'lessons': 'Focus on actionable takeaways. What should the reader do differently after reading this?'
+  };
+  const angleInstruction = templatePrompts[template] || '';
+
   // Rename file with proper extension
   const ext = req.file.mimetype === 'audio/webm' ? 'webm' : 'wav';
   const newPath = `${req.file.path}.${ext}`;
   fs.renameSync(req.file.path, newPath);
-  
+
   const OPENAI_KEY = process.env.OPENAI_API_KEY;
   if (!OPENAI_KEY) return res.status(500).json({ error: 'OPENAI_API_KEY not set' });
-  
+
   try {
     // Transcribe with Whisper
     const transcription = execSync(
@@ -289,14 +301,20 @@ app.post('/api/record/:topicId', upload.single('audio'), async (req, res) => {
       { timeout: 60000 }
     );
     const transcript = JSON.parse(transcription.toString()).text;
-    
+
+    // Build system prompt with template angle
+    let systemPrompt = 'You are a LinkedIn ghostwriter for a Head of Technology at a fintech startup. Write engaging, authentic LinkedIn posts. Keep it concise (150-250 words), use a conversational but professional tone. Include a hook in the first line. No hashtags unless they add real value.';
+    if (angleInstruction) {
+      systemPrompt += ' ' + angleInstruction;
+    }
+
     // Generate LinkedIn draft
     const chatPayload = JSON.stringify({
       model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
-          content: 'You are a LinkedIn ghostwriter for a Head of Technology at a fintech startup. Write engaging, authentic LinkedIn posts. Keep it concise (150-250 words), use a conversational but professional tone. Include a hook in the first line. No hashtags unless they add real value. The user will provide an article summary and their voice note thoughts — combine both into a polished draft.'
+          content: systemPrompt
         },
         {
           role: 'user',
