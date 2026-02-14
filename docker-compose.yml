@@ -22,6 +22,21 @@ services:
     networks:
       - thought-pipeline-net
 
+  thyme-bot:
+    build: .
+    container_name: thyme-bot
+    command: npm run thyme
+    environment:
+      - NODE_ENV=production
+      - THYME_BOT_TOKEN=${THYME_BOT_TOKEN}
+    volumes:
+      - ./:/app
+    restart: unless-stopped
+    depends_on:
+      - thought-pipeline
+    networks:
+      - thought-pipeline-net
+
 networks:
   thought-pipeline-net:
     driver: bridge
