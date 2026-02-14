@@ -55,49 +55,46 @@ bot.onText(/\/plan/, async (msg) => {
   // This will be handled by the isolated agent
 });
 
-// Handle natural language messages
+// Forward non-command messages to OpenClaw agent
 bot.on('message', async (msg) => {
   if (msg.chat.id.toString() !== USER_ID) return;
-  if (msg.text?.startsWith('/')) return; // Skip commands
+  if (msg.text?.startsWith('/')) return; // Commands handled separately
   
-  const text = msg.text?.toLowerCase() || '';
+  const text = msg.text;
+  const chatId = msg.chat.id;
+  const messageId = msg.message_id;
   
-  // Check for travel/time planning requests
-  if (text.includes('need to be at') || text.includes('going to') || text.includes('travel to')) {
-    bot.sendMessage(USER_ID, 
-      `🌿 Got it. Let me calculate the best time to leave...\n\n` +
-      `(This will be connected to calendar + maps API)`,
-      { reply_to_message_id: msg.message_id }
-    );
-    return;
-  }
+  // Send immediate acknowledgment
+  bot.sendMessage(USER_ID, '🌿 Let me think about that...', { reply_to_message_id: messageId });
   
-  // Check for reminder requests
-  if (text.includes('remind me') || text.includes('reminder')) {
-    bot.sendMessage(USER_ID,
-      `🌿 I'll remind you. Setting that up now...`,
-      { reply_to_message_id: msg.message_id }
-    );
-    return;
-  }
+  // Spawn Thyme agent to handle the response (async)
+  const { exec } = require('child_process');
+  const sanitizedText = text.replace(/'/g, "'\\''");
+  const sanitizedToken = BOT_TOKEN.replace(/'/g, "'\\''");
   
-  // Check for planning requests
-  if (text.includes('plan') || text.includes('schedule')) {
-    bot.sendMessage(USER_ID,
-      `🌿 Let me check your calendar and plan this out...`,
-      { reply_to_message_id: msg.message_id }
-    );
-    return;
-  }
+  // The agent will generate a response and then call Telegram API directly
+  const agentTask = `
+You are Thyme, Niranjan's time management AI companion. 
+Read your persona from /home/niranjan/.openclaw/workspace/agents/thyme.md.
+
+Niranjan just messaged you: "${sanitizedText}"
+
+Respond helpfully and concisely. Address him directly as "Niranjan".
+
+After generating your response, you MUST send it to Telegram by running:
+curl -s -X POST "https://api.telegram.org/bot${sanitizedToken}/sendMessage" \\
+  -d "chat_id=${chatId}" \\
+  -d "text=<YOUR_RESPONSE_HERE>" \\
+  -d "reply_to_message_id=${messageId}"
+
+Replace <YOUR_RESPONSE_HERE> with your actual response text (URL encoded if needed).
+`;
   
-  // Default response
-  bot.sendMessage(USER_ID,
-    `🌿 I'm listening! You said: "${msg.text}"\n\n` +
-    `Try:\n` +
-    `• "I need to be at [place] by [time]"\n` +
-    `• "Remind me to [task] in [time]"\n` +
-    `• "/plan" for your schedule`,
-    { reply_to_message_id: msg.message_id }
+  exec(
+    `openclaw sessions_spawn --label "thyme-interactive" --task '${agentTask.replace(/'/g, "'\\''")}' --agentId main --timeoutSeconds 60`,
+    (err) => {
+      if (err) console.error('Thyme spawn error:', err.message);
+    }
   );
 });
 
