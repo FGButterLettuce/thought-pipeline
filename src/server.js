@@ -605,6 +605,257 @@ app.get('/api/preferences', (req, res) => {
   res.json(getPreferences());
 });
 
+// --- TOPIC CLUSTERING ---
+function cosineSimilarity(str1, str2) {
+  const words1 = str1.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  const words2 = str2.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  
+  const vocab = new Set([...words1, ...words2]);
+  const vec1 = {};
+  const vec2 = {};
+  
+  words1.forEach(w => vec1[w] = (vec1[w] || 0) + 1);
+  words2.forEach(w => vec2[w] = (vec2[w] || 0) + 1);
+  
+  let dot = 0, mag1 = 0, mag2 = 0;
+  vocab.forEach(word => {
+    const v1 = vec1[word] || 0;
+    const v2 = vec2[word] || 0;
+    dot += v1 * v2;
+    mag1 += v1 * v1;
+    mag2 += v2 * v2;
+  });
+  
+  if (mag1 === 0 || mag2 === 0) return 0;
+  return dot / (Math.sqrt(mag1) * Math.sqrt(mag2));
+}
+
+app.get('/api/topics/:id/similar', (req, res) => {
+  const allTopics = [...getAllTopics(), ...getUserTopics()];
+  const target = allTopics.find(t => t.id === req.params.id);
+  if (!target) return res.status(404).json({ error: 'Topic not found' });
+  
+  const targetText = `${target.title} ${target.summary} ${target.details || ''}`;
+  
+  const similarities = allTopics
+    .filter(t => t.id !== target.id)
+    .map(t => {
+      const tText = `${t.title} ${t.summary} ${t.details || ''}`;
+      return { topic: t, score: cosineSimilarity(targetText, tText) };
+    })
+    .filter(s => s.score > 0.15)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+  
+  res.json(similarities);
+});
+
+app.post('/api/topics/merge', async (req, res) => {
+  const { topicIds, title } = req.body;
+  if (!topicIds || topicIds.length < 2) {
+    return res.status(400).json({ error: 'Need at least 2 topics to merge' });
+  }
+  
+  const allTopics = [...getAllTopics(), ...getUserTopics()];
+  const topics = topicIds.map(id => allTopics.find(t => t.id === id)).filter(Boolean);
+  
+  if (topics.length < 2) {
+    return res.status(400).json({ error: 'Not enough valid topics found' });
+  }
+  
+  const OPENAI_KEY = process.env.OPENAI_API_KEY;
+  if (!OPENAI_KEY) return res.status(500).json({ error: 'OPENAI_API_KEY not set' });
+  
+  try {
+    const chatPayload = JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a LinkedIn content strategist. Create a cohesive multi-post thread from the provided topics. The thread should flow naturally from one post to the next, building a narrative arc. Return ONLY valid JSON with this structure: {"title": "Thread title", "posts": [{"post": 1, "content": "First post content", "hook": "Opening hook"}, ...]}. Each post should be 100-200 words.`
+        },
+        {
+          role: 'user',
+          content: `Create a LinkedIn thread from these ${topics.length} related topics:\n\n${topics.map((t, i) => `${i+1}. ${t.title}\n${t.summary}\n${t.details || ''}\nLink: ${t.link}`).join('\n\n')}`
+        }
+      ]
+    });
+    
+    const chatResult = execSync(
+      `curl -s https://api.openai.com/v1/chat/completions \
+        -H "Authorization: Bearer ${OPENAI_KEY}" \
+        -H "Content-Type: application/json" \
+        -d '${chatPayload.replace(/'/g, "'\\''")}'`,
+      { timeout: 60000 }
+    );
+    
+    const content = JSON.parse(chatResult.toString()).choices[0].message.content;
+    const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const thread = JSON.parse(cleaned);
+    
+    // Save as a special draft
+    const drafts = getDrafts();
+    const draftObj = {
+      id: crypto.randomUUID(),
+      topicId: topicIds.join(','),
+      topicTitle: title || thread.title || `Thread: ${topics[0].title}`,
+      draft: thread.posts.map(p => `Post ${p.post}:\n${p.content}`).join('\n\n---\n\n'),
+      threadData: thread,
+      isThread: true,
+      mergedTopicIds: topicIds,
+      createdAt: new Date().toISOString()
+    };
+    drafts.unshift(draftObj);
+    saveDrafts(drafts);
+    
+    res.json(draftObj);
+  } catch (err) {
+    console.error('Thread generation error:', err.message);
+    res.status(500).json({ error: 'Failed to generate thread' });
+  }
+});
+
+// --- BATCH VOICE MODE ---
+const BATCH_SESSIONS_FILE = path.join(BASE, 'data', 'batch-sessions.json');
+
+function getBatchSessions() {
+  try { return JSON.parse(fs.readFileSync(BATCH_SESSIONS_FILE, 'utf-8')); }
+  catch { return []; }
+}
+
+function saveBatchSessions(sessions) {
+  fs.writeFileSync(BATCH_SESSIONS_FILE, JSON.stringify(sessions, null, 2));
+}
+
+app.post('/api/batch/start', (req, res) => {
+  const session = {
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+    status: 'recording',
+    recordings: []
+  };
+  const sessions = getBatchSessions();
+  sessions.push(session);
+  saveBatchSessions(sessions);
+  res.json(session);
+});
+
+app.get('/api/batch/:id', (req, res) => {
+  const sessions = getBatchSessions();
+  const session = sessions.find(s => s.id === req.params.id);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
+  res.json(session);
+});
+
+app.post('/api/batch/:id/recording', upload.single('audio'), async (req, res) => {
+  const sessions = getBatchSessions();
+  const session = sessions.find(s => s.id === req.params.id);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
+  if (!req.file) return res.status(400).json({ error: 'No audio file' });
+  
+  const { topicId, topicTitle } = req.body;
+  const ext = req.file.mimetype === 'audio/webm' ? 'webm' : 'wav';
+  const newPath = `${req.file.path}.${ext}`;
+  fs.renameSync(req.file.path, newPath);
+  
+  session.recordings.push({
+    id: crypto.randomUUID(),
+    topicId,
+    topicTitle,
+    audioPath: newPath,
+    createdAt: new Date().toISOString()
+  });
+  saveBatchSessions(sessions);
+  
+  res.json({ ok: true, recordingId: session.recordings[session.recordings.length - 1].id });
+});
+
+app.post('/api/batch/:id/process', async (req, res) => {
+  const sessions = getBatchSessions();
+  const session = sessions.find(s => s.id === req.params.id);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
+  
+  const OPENAI_KEY = process.env.OPENAI_API_KEY;
+  if (!OPENAI_KEY) return res.status(500).json({ error: 'OPENAI_API_KEY not set' });
+  
+  const results = [];
+  
+  for (const rec of session.recordings) {
+    try {
+      // Transcribe
+      const transcription = execSync(
+        `curl -s https://api.openai.com/v1/audio/transcriptions \
+          -H "Authorization: Bearer ${OPENAI_KEY}" \
+          -F "file=@${rec.audioPath}" \
+          -F "model=whisper-1"`,
+        { timeout: 60000 }
+      );
+      const transcript = JSON.parse(transcription.toString()).text;
+      
+      // Get topic
+      const allTopics = [...getAllTopics(), ...getUserTopics()];
+      const topic = allTopics.find(t => t.id === rec.topicId);
+      
+      if (topic) {
+        // Generate draft
+        const chatPayload = JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a LinkedIn ghostwriter for a Head of Technology at a fintech startup. Write engaging, authentic LinkedIn posts. Keep it concise (150-250 words).'
+            },
+            {
+              role: 'user',
+              content: `Article: ${topic.title}\n\nSummary: ${topic.summary}\n\nMy thoughts: ${transcript}\n\nWrite a LinkedIn post draft.`
+            }
+          ]
+        });
+        
+        const chatResult = execSync(
+          `curl -s https://api.openai.com/v1/chat/completions \
+            -H "Authorization: Bearer ${OPENAI_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '${chatPayload.replace(/'/g, "'\\''")}'`,
+          { timeout: 60000 }
+        );
+        
+        const draft = JSON.parse(chatResult.toString()).choices[0].message.content;
+        
+        // Save draft
+        const drafts = getDrafts();
+        const draftObj = {
+          id: crypto.randomUUID(),
+          topicId: topic.id,
+          topicTitle: topic.title,
+          transcript,
+          draft,
+          batchSessionId: session.id,
+          createdAt: new Date().toISOString()
+        };
+        drafts.unshift(draftObj);
+        saveDrafts(drafts);
+        
+        results.push({ success: true, topicTitle: topic.title, draftId: draftObj.id });
+      } else {
+        results.push({ success: false, topicTitle: rec.topicTitle, error: 'Topic not found' });
+      }
+      
+      // Clean up audio file
+      try { fs.unlinkSync(rec.audioPath); } catch {}
+    } catch (err) {
+      results.push({ success: false, topicTitle: rec.topicTitle, error: err.message });
+    }
+  }
+  
+  session.status = 'processed';
+  session.results = results;
+  session.processedAt = new Date().toISOString();
+  saveBatchSessions(sessions);
+  
+  res.json({ session, results });
+});
+
 // Start HTTP server (Cloudflare Tunnel handles HTTPS)
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Thought Pipeline running at http://0.0.0.0:${PORT}`);

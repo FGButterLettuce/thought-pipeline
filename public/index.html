@@ -542,6 +542,199 @@
       font-size: 14px;
       color: #ccc;
     }
+    
+    /* Weekly View */
+    .weekly-view {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .weekly-day {
+      background: #111;
+      border: 1px solid #1e1e1e;
+      border-radius: 12px;
+      padding: 12px;
+      min-height: 120px;
+    }
+    .weekly-day.today {
+      border-color: #4ade80;
+      background: #1a2e1a;
+    }
+    .weekly-day .day-name {
+      font-size: 11px;
+      color: #666;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .weekly-day .day-num {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ccc;
+      margin-bottom: 8px;
+    }
+    .weekly-day .day-draft {
+      background: #4ade80;
+      color: #0a0a0a;
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .view-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .view-toggle button {
+      flex: 1;
+      padding: 10px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #888;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .view-toggle button.active {
+      background: #4ade80;
+      color: #0a0a0a;
+      border-color: #4ade80;
+    }
+    
+    /* Topic Clustering */
+    .similar-topics {
+      background: #1a1520;
+      border: 1px solid #c084fc;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 12px;
+    }
+    .similar-topics h4 {
+      color: #c084fc;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+    .similar-topic-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      background: #111;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .similar-topic-item input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: #c084fc;
+    }
+    .similar-topic-item .title {
+      flex: 1;
+      font-size: 13px;
+      color: #ccc;
+    }
+    .similar-topic-item .score {
+      font-size: 11px;
+      color: #888;
+    }
+    .merge-btn {
+      width: 100%;
+      padding: 12px;
+      background: #c084fc;
+      color: #0a0a0a;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    
+    /* Batch Mode */
+    .batch-overlay {
+      position: fixed;
+      inset: 0;
+      background: #0a0a0a;
+      z-index: 2000;
+      display: none;
+      flex-direction: column;
+    }
+    .batch-overlay.active { display: flex; }
+    .batch-header {
+      padding: 16px;
+      border-bottom: 1px solid #1a1a1a;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .batch-header h2 {
+      font-size: 18px;
+      color: #4ade80;
+    }
+    .batch-queue {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+    .batch-item {
+      background: #111;
+      border: 1px solid #1e1e1e;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .batch-item.recording {
+      border-color: #f87171;
+      background: #2e1a1a;
+    }
+    .batch-item.recorded {
+      border-color: #4ade80;
+      background: #1a2e1a;
+    }
+    .batch-item .topic-title {
+      flex: 1;
+      font-size: 14px;
+      color: #ccc;
+    }
+    .batch-item .status {
+      font-size: 12px;
+      color: #888;
+    }
+    .batch-controls {
+      padding: 16px;
+      border-top: 1px solid #1a1a1a;
+      display: flex;
+      gap: 12px;
+    }
+    .batch-controls button {
+      flex: 1;
+      padding: 16px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .batch-start-btn {
+      background: #4ade80;
+      color: #0a0a0a;
+    }
+    .batch-record-btn {
+      background: #f87171;
+      color: #0a0a0a;
+    }
+    .batch-finish-btn {
+      background: #1a3a1a;
+      color: #4ade80;
+      border: 2px solid #4ade80;
+    }
+    
     .drafts-header {
       display: flex;
       justify-content: space-between;
@@ -797,12 +990,17 @@
       <h2>📅 Content Calendar</h2>
       <button onclick="toggleCalendarView()">✕ Close</button>
     </div>
+    <div class="view-toggle">
+      <button id="view-monthly" class="active" onclick="setCalendarView('monthly')">Monthly</button>
+      <button id="view-weekly" onclick="setCalendarView('weekly')">Weekly</button>
+    </div>
     <div class="calendar-nav">
       <button onclick="changeMonth(-1)">← Prev</button>
       <span id="calendar-month" style="color: #ccc; font-weight: 600;"></span>
       <button onclick="changeMonth(1)">Next →</button>
     </div>
     <div class="calendar-grid" id="calendar-grid"></div>
+    <div class="weekly-view" id="weekly-grid" style="display:none;"></div>
     <h3 style="color: #ccc; font-size: 16px; margin: 20px 0 12px;">Scheduled Posts</h3>
     <div id="scheduled-list"></div>
   </div>
@@ -884,6 +1082,22 @@
   
   <!-- Toast -->
   <div class="toast" id="toast"></div>
+
+  <!-- Batch Mode Overlay -->
+  <div class="batch-overlay" id="batch-overlay">
+    <div class="batch-header">
+      <h2>🎙️ Batch Recording Mode</h2>
+      <button onclick="toggleBatchMode()" style="background:#222;color:#888;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;">✕ Close</button>
+    </div>
+    <div class="batch-queue" id="batch-queue">
+      <div class="empty">Select topics to add to your batch queue</div>
+    </div>
+    <div class="batch-controls">
+      <button class="batch-start-btn" id="batch-start-btn" onclick="startBatchSession()">Start Batch Session</button>
+      <button class="batch-record-btn" id="batch-record-btn" onclick="recordBatchItem()" style="display:none;">🎙 Record Next</button>
+      <button class="batch-finish-btn" id="batch-finish-btn" onclick="finishBatchSession()" style="display:none;">✓ Finish & Process</button>
+    </div>
+  </div>
 
   <script>
     // Global cache buster for all fetch requests
@@ -1748,6 +1962,360 @@
       // - Inner content is NOT scrolled
       if (Math.abs(diffY) > 100 && diffX < 50 && duration < 300 && !isScrolled) {
         if (diffY > 0) nextStory(); // Swipe up = next
+      }
+    });
+    
+    // ========== ENHANCED CALENDAR WITH WEEKLY VIEW ==========
+    let calendarViewMode = 'monthly';
+    
+    function setCalendarView(mode) {
+      calendarViewMode = mode;
+      document.getElementById('view-monthly').classList.toggle('active', mode === 'monthly');
+      document.getElementById('view-weekly').classList.toggle('active', mode === 'weekly');
+      document.getElementById('calendar-grid').style.display = mode === 'monthly' ? 'grid' : 'none';
+      document.getElementById('weekly-grid').style.display = mode === 'weekly' ? 'grid' : 'none';
+      renderCalendar();
+    }
+    
+    async function renderWeeklyView() {
+      const year = currentCalendarMonth.getFullYear();
+      const month = currentCalendarMonth.getMonth();
+      const draftsRes = await fetch('/api/drafts');
+      const drafts = await draftsRes.json();
+      const scheduledRes = await fetch('/api/drafts/scheduled');
+      const scheduled = await scheduledRes.json();
+      
+      const draftsByDay = {};
+      drafts.forEach(d => {
+        const dDate = new Date(d.createdAt);
+        if (dDate.getFullYear() === year && dDate.getMonth() === month) {
+          const day = dDate.getDate();
+          if (!draftsByDay[day]) draftsByDay[day] = [];
+          draftsByDay[day].push(d.topicTitle.substring(0, 20) + '...');
+        }
+      });
+      
+      scheduled.forEach(s => {
+        const sDate = new Date(s.scheduledDate);
+        if (sDate.getFullYear() === year && sDate.getMonth() === month) {
+          const day = sDate.getDate();
+          if (!draftsByDay[day]) draftsByDay[day] = [];
+          draftsByDay[day].push('📅 ' + s.topicTitle.substring(0, 15) + '...');
+        }
+      });
+      
+      const today = new Date();
+      const isThisMonth = today.getFullYear() === year && today.getMonth() === month;
+      
+      // Get current week or first week of month
+      const startOfWeek = new Date(currentCalendarMonth);
+      startOfWeek.setDate(1);
+      const dayOfWeek = startOfWeek.getDay();
+      startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek);
+      
+      const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      let html = '';
+      
+      for (let i = 0; i < 7; i++) {
+        const dayDate = new Date(startOfWeek);
+        dayDate.setDate(startOfWeek.getDate() + i);
+        const day = dayDate.getDate();
+        const isToday = isThisMonth && today.getDate() === day && today.getMonth() === dayDate.getMonth();
+        const dayDrafts = draftsByDay[day] || [];
+        
+        html += `
+          <div class="weekly-day ${isToday ? 'today' : ''}">
+            <div class="day-name">${weekdays[i]}</div>
+            <div class="day-num">${day}</div>
+            ${dayDrafts.map(d => `<div class="day-draft" title="${d}">${d}</div>`).join('')}
+          </div>
+        `;
+      }
+      
+      document.getElementById('weekly-grid').innerHTML = html;
+    }
+    
+    // Override renderCalendar to include weekly view
+    const originalRenderCalendar = renderCalendar;
+    renderCalendar = async function() {
+      if (calendarViewMode === 'weekly') {
+        await renderWeeklyView();
+        return;
+      }
+      await originalRenderCalendar();
+    };
+    
+    // ========== TOPIC CLUSTERING ==========
+    async function loadSimilarTopics(topicId) {
+      try {
+        const res = await fetch(`/api/topics/${topicId}/similar`);
+        const similar = await res.json();
+        
+        if (similar.length === 0) return;
+        
+        const card = document.getElementById(`topic-${topicId}`);
+        if (!card) return;
+        
+        const similarHTML = `
+          <div class="similar-topics" id="similar-${topicId}">
+            <h4>🔗 Related Topics (${similar.length} found)</h4>
+            ${similar.map(s => `
+              <div class="similar-topic-item">
+                <input type="checkbox" class="merge-check" data-topic-id="${s.topic.id}" data-title="${s.topic.title.replace(/"/g, '&quot;')}">
+                <span class="title">${s.topic.title}</span>
+                <span class="score">${Math.round(s.score * 100)}% match</span>
+              </div>
+            `).join('')}
+            <button class="merge-btn" onclick="mergeSelectedTopics('${topicId}')">Merge Selected into Thread</button>
+          </div>
+        `;
+        
+        card.insertAdjacentHTML('beforeend', similarHTML);
+      } catch (err) {
+        console.error('Failed to load similar topics:', err);
+      }
+    }
+    
+    async function mergeSelectedTopics(mainTopicId) {
+      const checkboxes = document.querySelectorAll(`#similar-${mainTopicId} .merge-check:checked`);
+      if (checkboxes.length === 0) {
+        toast('Select at least one topic to merge');
+        return;
+      }
+      
+      const topicIds = [mainTopicId, ...Array.from(checkboxes).map(cb => cb.dataset.topicId)];
+      const titles = Array.from(checkboxes).map(cb => cb.dataset.title);
+      
+      toast('🧵 Creating thread...');
+      
+      try {
+        const res = await fetch('/api/topics/merge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topicIds, title: `Thread: ${titles[0]}` })
+        });
+        
+        const result = await res.json();
+        if (result.error) {
+          toast('Failed to create thread');
+          return;
+        }
+        
+        toast('✓ Thread created!');
+        toggleDraftsView();
+        loadDrafts();
+      } catch (err) {
+        console.error('Merge error:', err);
+        toast('Failed to merge topics');
+      }
+    }
+    
+    // ========== BATCH MODE ==========
+    let batchSession = null;
+    let batchQueue = [];
+    let isBatchRecording = false;
+    
+    function toggleBatchMode() {
+      const overlay = document.getElementById('batch-overlay');
+      if (!overlay.classList.contains('active')) {
+        // Open batch mode - show topic selector
+        renderBatchQueue();
+        overlay.classList.add('active');
+      } else {
+        overlay.classList.remove('active');
+      }
+    }
+    
+    function renderBatchQueue() {
+      const queueEl = document.getElementById('batch-queue');
+      if (batchQueue.length === 0) {
+        queueEl.innerHTML = `
+          <div class="empty">
+            <p>No topics in queue</p>
+            <p style="font-size:12px;color:#666;margin-top:8px;">Close this and click "🎙 Batch" on topics to add them</p>
+          </div>
+        `;
+        document.getElementById('batch-start-btn').style.display = 'block';
+        document.getElementById('batch-record-btn').style.display = 'none';
+        document.getElementById('batch-finish-btn').style.display = 'none';
+        return;
+      }
+      
+      queueEl.innerHTML = batchQueue.map((item, idx) => `
+        <div class="batch-item ${item.status}" id="batch-item-${idx}">
+          <span class="topic-title">${item.topicTitle}</span>
+          <span class="status">${item.status === 'pending' ? '⏳ Waiting' : item.status === 'recording' ? '🔴 Recording...' : '✓ Done'}</span>
+        </div>
+      `).join('');
+    }
+    
+    function addToBatch(topicId, topicTitle) {
+      if (!batchQueue.find(b => b.topicId === topicId)) {
+        batchQueue.push({ topicId, topicTitle, status: 'pending' });
+        toast('Added to batch queue');
+      }
+    }
+    
+    async function startBatchSession() {
+      if (batchQueue.length === 0) {
+        toast('Add topics to queue first');
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/batch/start', { method: 'POST' });
+        batchSession = await res.json();
+        
+        document.getElementById('batch-start-btn').style.display = 'none';
+        document.getElementById('batch-record-btn').style.display = 'block';
+        document.getElementById('batch-finish-btn').style.display = 'block';
+        
+        renderBatchQueue();
+        toast('Batch session started');
+      } catch (err) {
+        toast('Failed to start batch session');
+      }
+    }
+    
+    async function recordBatchItem() {
+      if (!batchSession || isBatchRecording) return;
+      
+      const nextItem = batchQueue.find(b => b.status === 'pending');
+      if (!nextItem) {
+        toast('All items recorded!');
+        return;
+      }
+      
+      const idx = batchQueue.indexOf(nextItem);
+      batchQueue[idx].status = 'recording';
+      isBatchRecording = true;
+      renderBatchQueue();
+      
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          
+          // Upload to batch session
+          const fd = new FormData();
+          fd.append('audio', blob, 'recording.webm');
+          fd.append('topicId', nextItem.topicId);
+          fd.append('topicTitle', nextItem.topicTitle);
+          
+          await fetch(`/api/batch/${batchSession.id}/recording`, {
+            method: 'POST',
+            body: fd
+          });
+          
+          batchQueue[idx].status = 'recorded';
+          isBatchRecording = false;
+          renderBatchQueue();
+          toast(`✓ Recorded: ${nextItem.topicTitle.substring(0, 20)}...`);
+        };
+        
+        mediaRecorder.start();
+        
+        // Show recording indicator
+        toast('🔴 Recording... Click "Record Next" to stop');
+        
+      } catch(e) {
+        toast('Mic access denied');
+        batchQueue[idx].status = 'pending';
+        isBatchRecording = false;
+        renderBatchQueue();
+      }
+    }
+    
+    function stopBatchRecording() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+      }
+    }
+    
+    async function finishBatchSession() {
+      if (!batchSession) return;
+      
+      // Stop any active recording
+      stopBatchRecording();
+      
+      toast('⏳ Processing all recordings...');
+      
+      try {
+        const res = await fetch(`/api/batch/${batchSession.id}/process`, { method: 'POST' });
+        const result = await res.json();
+        
+        const successCount = result.results.filter(r => r.success).length;
+        toast(`✓ Created ${successCount} drafts from batch`);
+        
+        // Reset
+        batchSession = null;
+        batchQueue = [];
+        toggleBatchMode();
+        toggleDraftsView();
+        loadDrafts();
+      } catch (err) {
+        toast('Failed to process batch');
+      }
+    }
+    
+    // Add batch button to topic cards
+    const originalRenderNormalMode = renderNormalMode;
+    renderNormalMode = function() {
+      originalRenderNormalMode();
+      // Add batch button to each card
+      document.querySelectorAll('.topic-card').forEach(card => {
+        const topicId = card.id.replace('topic-', '');
+        const titleEl = card.querySelector('h3');
+        const topicTitle = titleEl.textContent;
+        
+        const actionsEl = card.querySelector('.card-actions');
+        if (actionsEl) {
+          const batchBtn = document.createElement('button');
+          batchBtn.className = 'btn';
+          batchBtn.style.cssText = 'background:#2e1a2e;color:#c084fc;';
+          batchBtn.textContent = '🎙 Batch';
+          batchBtn.onclick = () => addToBatch(topicId, topicTitle);
+          actionsEl.appendChild(batchBtn);
+        }
+        
+        // Load similar topics after a delay
+        setTimeout(() => loadSimilarTopics(topicId), 500);
+      });
+    };
+    
+    // ========== UTILS ==========
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    }
+    
+    // Swipe support
+    let touchStartY = 0;
+    let touchStartX = 0;
+    let touchStartTime = 0;
+    
+    document.getElementById('story-viewer').addEventListener('touchstart', e => {
+      touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
+      touchStartTime = Date.now();
+    }, { passive: true });
+    
+    document.getElementById('story-viewer').addEventListener('touchend', e => {
+      if (!driveMode) return;
+      const diffY = touchStartY - e.changedTouches[0].clientY;
+      const diffX = Math.abs(touchStartX - e.changedTouches[0].clientX);
+      const duration = Date.now() - touchStartTime;
+      const scrollEl = document.getElementById('story-scroll');
+      const isScrolled = scrollEl && (scrollEl.scrollTop > 5 || (scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight > 5));
+      if (Math.abs(diffY) > 100 && diffX < 50 && duration < 300 && !isScrolled) {
+        if (diffY > 0) nextStory();
       }
     });
     
