@@ -2296,29 +2296,6 @@
       setTimeout(() => t.classList.remove('show'), 2000);
     }
     
-    // Swipe support
-    let touchStartY = 0;
-    let touchStartX = 0;
-    let touchStartTime = 0;
-    
-    document.getElementById('story-viewer').addEventListener('touchstart', e => {
-      touchStartY = e.touches[0].clientY;
-      touchStartX = e.touches[0].clientX;
-      touchStartTime = Date.now();
-    }, { passive: true });
-    
-    document.getElementById('story-viewer').addEventListener('touchend', e => {
-      if (!driveMode) return;
-      const diffY = touchStartY - e.changedTouches[0].clientY;
-      const diffX = Math.abs(touchStartX - e.changedTouches[0].clientX);
-      const duration = Date.now() - touchStartTime;
-      const scrollEl = document.getElementById('story-scroll');
-      const isScrolled = scrollEl && (scrollEl.scrollTop > 5 || (scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight > 5));
-      if (Math.abs(diffY) > 100 && diffX < 50 && duration < 300 && !isScrolled) {
-        if (diffY > 0) nextStory();
-      }
-    });
-    
     // Init
     loadTopics();
   </script>
