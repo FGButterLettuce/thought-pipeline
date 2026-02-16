@@ -856,7 +856,154 @@ app.post('/api/batch/:id/process', async (req, res) => {
   res.json({ session, results });
 });
 
+
+// --- Auto Cleanup: Remove topics older than retention period ---
+const CLEANUP_RETENTION_DAYS = 21; // 3 weeks
+const CLEANUP_LOG_FILE = path.join(BASE, 'data', 'cleanup.log');
+
+function logCleanup(message) {
+  const timestamp = new Date().toISOString();
+  const logEntry = `[${timestamp}] ${message}\n`;
+  try {
+    fs.appendFileSync(CLEANUP_LOG_FILE, logEntry);
+  } catch {}
+  console.log(`[Cleanup] ${message}`);
+}
+
+function getFileDate(filename) {
+  // Extract date from filename like "2026-02-16.md"
+  const match = filename.match(/(\d{4}-\d{2}-\d{2})/);
+  if (match) {
+    return new Date(match[1]);
+  }
+  // Fallback to file modification time
+  try {
+    const stats = fs.statSync(path.join(SCOUT_DIR, filename));
+    return stats.mtime;
+  } catch {
+    return new Date();
+  }
+}
+
+function cleanupOldTopics() {
+  if (!fs.existsSync(SCOUT_DIR)) return { deleted: 0, errors: [] };
+  
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - CLEANUP_RETENTION_DAYS);
+  
+  const files = fs.readdirSync(SCOUT_DIR).filter(f => f.endsWith('.md'));
+  const deletedFiles = [];
+  const errors = [];
+  
+  for (const file of files) {
+    const fileDate = getFileDate(file);
+    if (fileDate < cutoffDate) {
+      try {
+        const filePath = path.join(SCOUT_DIR, file);
+        fs.unlinkSync(filePath);
+        deletedFiles.push(file);
+        logCleanup(`Deleted old scout file: ${file} (date: ${fileDate.toISOString().split('T')[0]})`);
+      } catch (err) {
+        errors.push({ file, error: err.message });
+      }
+    }
+  }
+  
+  // Also clean up orphaned preferences (topics that no longer exist)
+  const prefs = getPreferences();
+  const allTopics = getAllTopics();
+  const existingIds = new Set(allTopics.map(t => t.id));
+  const userTopics = getUserTopics();
+  const userTopicIds = new Set(userTopics.map(t => t.id));
+  
+  let prefsModified = false;
+  
+  ['skipped', 'interested', 'recorded', 'deleted'].forEach(status => {
+    const beforeLength = prefs[status]?.length || 0;
+    prefs[status] = (prefs[status] || []).filter(id => {
+      // Keep if topic still exists in scout files or is a user topic
+      return existingIds.has(id) || userTopicIds.has(id);
+    });
+    if (prefs[status].length !== beforeLength) {
+      prefsModified = true;
+    }
+  });
+  
+  if (prefsModified) {
+    savePreferences(prefs);
+    logCleanup('Cleaned up orphaned preferences');
+  }
+  
+  if (deletedFiles.length > 0 || prefsModified) {
+    logCleanup(`Cleanup complete: ${deletedFiles.length} files deleted, preferences ${prefsModified ? 'updated' : 'unchanged'}`);
+  }
+  
+  return { 
+    deleted: deletedFiles.length, 
+    files: deletedFiles, 
+    errors,
+    preferencesCleaned: prefsModified,
+    cutoffDate: cutoffDate.toISOString().split('T')[0]
+  };
+}
+
+// API endpoint to manually trigger cleanup
+app.post('/api/cleanup', (req, res) => {
+  const result = cleanupOldTopics();
+  res.json({ 
+    success: true, 
+    retentionDays: CLEANUP_RETENTION_DAYS,
+    ...result
+  });
+});
+
+// API endpoint to get cleanup status/log
+app.get('/api/cleanup', (req, res) => {
+  let logs = [];
+  try {
+    if (fs.existsSync(CLEANUP_LOG_FILE)) {
+      logs = fs.readFileSync(CLEANUP_LOG_FILE, 'utf-8')
+        .split('\n')
+        .filter(line => line.trim())
+        .slice(-50); // Last 50 entries
+    }
+  } catch {}
+  
+  // Count files by age
+  const files = fs.existsSync(SCOUT_DIR) 
+    ? fs.readdirSync(SCOUT_DIR).filter(f => f.endsWith('.md'))
+    : [];
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - CLEANUP_RETENTION_DAYS);
+  
+  let oldFiles = 0;
+  let totalFiles = files.length;
+  
+  for (const file of files) {
+    const fileDate = getFileDate(file);
+    if (fileDate < cutoffDate) oldFiles++;
+  }
+  
+  res.json({
+    retentionDays: CLEANUP_RETENTION_DAYS,
+    totalFiles,
+    oldFiles,
+    willDelete: oldFiles,
+    cutoffDate: cutoffDate.toISOString().split('T')[0],
+    recentLogs: logs
+  });
+});
+
+// Run cleanup on startup (optional - can be disabled)
+const RUN_CLEANUP_ON_STARTUP = process.env.RUN_CLEANUP_ON_STARTUP !== 'false';
+
 // Start HTTP server (Cloudflare Tunnel handles HTTPS)
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Thought Pipeline running at http://0.0.0.0:${PORT}`);
+  
+  if (RUN_CLEANUP_ON_STARTUP) {
+    console.log('[Cleanup] Running startup cleanup...');
+    const result = cleanupOldTopics();
+    console.log(`[Cleanup] Startup cleanup complete: ${result.deleted} old files removed`);
+  }
 });
