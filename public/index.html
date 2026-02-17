@@ -284,10 +284,46 @@
       display: none;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       z-index: 1000;
+      padding: 20px;
+      overflow-y: auto;
     }
     .recording-overlay.active { display: flex; }
+    
+    .recording-topic-content {
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #1a1a1a;
+      border-radius: 12px;
+      border: 1px solid #333;
+    }
+    
+    .recording-topic-content h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #e0e0e0;
+    }
+    
+    .recording-summary {
+      font-size: 14px;
+      color: #999;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+    
+    .recording-insights {
+      font-size: 13px;
+      color: #c084fc;
+      line-height: 1.5;
+      padding: 12px;
+      background: #1a1520;
+      border-radius: 8px;
+      border-left: 3px solid #c084fc;
+    }
     
     .recording-pulse {
       width: 120px;
@@ -1069,6 +1105,11 @@
 
   <!-- Recording Overlay -->
   <div class="recording-overlay" id="recording-overlay">
+    <div class="recording-topic-content">
+      <h3 id="recording-topic-title">Topic Title</h3>
+      <p id="recording-topic-summary" class="recording-summary"></p>
+      <div id="recording-topic-insights" class="recording-insights"></div>
+    </div>
     <div class="recording-pulse"></div>
     <div class="recording-text">Recording your thoughts...</div>
     <button class="stop-rec-btn" onclick="stopRecording()">⏹ STOP</button>
@@ -1727,6 +1768,18 @@
 
       const topic = topics[currentIndex];
       const loadingEl = document.getElementById('tts-loading-overlay');
+      
+      // Clear any existing audio
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+      }
+      
+      // Clear any pending auto-advance timeout
+      if (autoAdvanceTimeout) {
+        clearTimeout(autoAdvanceTimeout);
+        autoAdvanceTimeout = null;
+      }
 
       try {
         // Show loading
@@ -1739,20 +1792,27 @@
 
         if (res.error) {
           console.log('TTS error for:', topic.title, res.error);
-          setTimeout(() => nextStory(), 1000);
+          isPlaying = false;
+          updatePlayButton();
           return;
         }
         
         currentAudio = new Audio(res.url);
+        let hasStartedPlaying = false;
+        let loadTimeout = null;
         
         // Handle audio load errors
         currentAudio.onerror = () => {
           console.log('Audio load error for:', topic.title);
-          setTimeout(() => nextStory(), 1000);
+          isPlaying = false;
+          updatePlayButton();
         };
         
         // Wait for audio to be ready
         currentAudio.addEventListener('canplay', () => {
+          hasStartedPlaying = true;
+          if (loadTimeout) clearTimeout(loadTimeout);
+          
           // Progress bar
           const progressBar = document.getElementById('progress-bar');
           progressBar.style.width = '0%';
@@ -1765,21 +1825,25 @@
           });
           
           currentAudio.onended = () => {
+            isPlaying = false;
+            updatePlayButton();
             // Auto-advance after 3 seconds (giving time to read)
             autoAdvanceTimeout = setTimeout(() => nextStory(), 3000);
           };
           
           currentAudio.play().catch(e => {
             console.log('Play error:', e);
-            setTimeout(() => nextStory(), 1000);
+            isPlaying = false;
+            updatePlayButton();
           });
         }, { once: true });
         
-        // Timeout if audio doesn't load in 5 seconds
-        setTimeout(() => {
-          if (currentAudio && currentAudio.readyState < 2) {
+        // Timeout if audio doesn't load in 5 seconds - but only if it hasn't started
+        loadTimeout = setTimeout(() => {
+          if (!hasStartedPlaying) {
             console.log('Audio load timeout for:', topic.title);
-            nextStory();
+            isPlaying = false;
+            updatePlayButton();
           }
         }, 5000);
         
@@ -1788,7 +1852,6 @@
         loadingEl.classList.remove('active');
         isPlaying = false;
         updatePlayButton();
-        setTimeout(() => nextStory(), 1000);
       }
     }
     
@@ -1883,8 +1946,25 @@
     }
     
     // ========== RECORDING ==========
+    let currentRecordingTopic = null;
+    
     async function startRecording(topicId) {
       try {
+        // Find the topic to display its content
+        const allTopics = [...topics, ...(window.userTopics || [])];
+        currentRecordingTopic = allTopics.find(t => t.id === topicId);
+        
+        // Update recording overlay with topic content
+        const titleEl = document.getElementById('recording-topic-title');
+        const summaryEl = document.getElementById('recording-topic-summary');
+        const insightsEl = document.getElementById('recording-topic-insights');
+        
+        if (currentRecordingTopic && titleEl) {
+          titleEl.textContent = currentRecordingTopic.title || 'Topic';
+          summaryEl.textContent = currentRecordingTopic.summary || '';
+          insightsEl.textContent = currentRecordingTopic.details || '';
+        }
+        
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
